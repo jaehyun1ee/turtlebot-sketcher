@@ -99,24 +99,6 @@ class Upper():
             self.state = control.command(cmd)
         (position, rotation) = control.get_odom()
 
-        while abs(rotation - goal_z) > 0.05:
-            (position, rotation) = control.get_odom()
-            if goal_z >= 0:
-                if rotation <= goal_z and rotation >= goal_z - pi:
-                    cmd.linear.x = 0.00
-                    cmd.angular.z = 0.5
-                else:
-                    cmd.linear.x = 0.00
-                    cmd.angular.z = -0.5
-            else:
-                if rotation <= goal_z + pi and rotation > goal_z:
-                    cmd.linear.x = 0.00
-                    cmd.angular.z = -0.5
-                else:
-                    cmd.linear.x = 0.00
-                    cmd.angular.z = 0.5
-            self.state = control.command(cmd)
-
         rospy.loginfo("Stopping the robot...")
         print("MOVE COMPLETE")
         print(control.get_state())
