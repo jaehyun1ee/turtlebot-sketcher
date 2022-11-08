@@ -45,14 +45,14 @@ class Upper():
         # state info from gazebo
         self.state = [0, 0, 0] # x-coord, y-coord, rot-angle
         
-    def parse_input():
+    def parse_input(self):
         dx, dy, d = input("| dx | dy | d |\n").split()
-        if x == 's':
+        if dx == 's':
             self.shutdown()
         dx, dy, d = [float(dx), float(dy), float(d)]
         return dx, dy, d
 
-    def episode():
+    def episode(self):
         # parse input
         (goal_dx, goal_dy, goal_d) = self.parse_input()
         goal_x = self.state[0] + d * goal_dx
@@ -133,12 +133,12 @@ class Lower():
         self.model = rospy.ServiceProxy('/gazebo/get_model_state', GetModelState)
         self.r = rospy.Rate(10)
 
-    def command(cmd):
+    def command(self, cmd):
         self.cmd_vel.publish(cmd)
         r.sleep()
         return self.get_state()
 
-    def get_state():
+    def get_state(self):
         resp = model("turtlebot3_burger", "")
         x = resp.pose.orientation.x
         y = resp.pose.orientation.y
@@ -146,7 +146,7 @@ class Lower():
 
         return [ x, y, rot ]
 
-    def get_odom():
+    def get_odom(self):
         try:
             self.tf_listener.waitForTransform(self.odom_frame, 'base_footprint', rospy.Time(), rospy.Duration(1.0))
             self.base_frame = 'base_footprint'
@@ -282,7 +282,6 @@ class GotoPoint():
 if __name__ == '__main__':
     try:
         while not rospy.is_shutdown():
-            print("HHKHKHK")
             print(msg)
             upper = Upper()
             upper.episode()
