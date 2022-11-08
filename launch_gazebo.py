@@ -10,7 +10,7 @@ from tf.transformations import euler_from_quaternion
 import numpy as np
 from gazebo_msgs.msg import ModelState
 from gazebo_msgs.srv import GetModelState, SetModelState
-
+from time import sleep
    
 class SimpleEnv():
     def __init__(self):
@@ -21,7 +21,8 @@ class SimpleEnv():
         launchfile = "/home/dongjoo/catkin_ws/src/cs470-stroker/turtlebot3_simulations/turtlebot3_gazebo/launch/turtlebot3_empty_world.launch"
         
         os.environ["TURTLEBOT3_MODEL"] = "burger"
-        subprocess.Popen([sys.executable, os.path.join(ros_path, b"roslaunch"), "-p", "11311", launchfile])
+        self.pid = subprocess.Popen([sys.executable, os.path.join(ros_path, b"roslaunch"), "-p", "11311", launchfile])
+        sleep(10)
         print ("Gazebo launched!")
         self.state = [0, 0, 0]
 
@@ -40,9 +41,10 @@ class SimpleEnv():
             cmd.linear.x = 0.05
             cmd.angular.z = -0.3
 
-        lower.command(cmd)
-
+        self.lower.command(cmd)
         self.state = self.observation()
+        print(self.state)
+        self.lower.command(Twist())
 
         return self.state, 0, 0, {}
 
@@ -67,7 +69,22 @@ class SimpleEnv():
 
         state = self.observation()
 
+        print("reset" + str(state))
         return state
+
+    def shutdown(self):
+         # Kill gzclient, gzserver and roscore
+        tmp = os.popen("ps -Af").read()
+        gzclient_count = tmp.count('gzclient')
+        gzserver_count = tmp.count('gzserver')
+
+        if gzclient_count > 0:
+            os.system("killall -9 gzclient")
+        if gzserver_count > 0:
+            os.system("killall -9 gzserver")
+
+        if (gzclient_count or gzserver_count >0):
+            os.wait()
 
 class Lower():
     def __init__(self):
@@ -115,4 +132,7 @@ class Lower():
 
 if __name__ == "__main__":
     env = SimpleEnv()
-    env.step(0)
+    for i in range(100):
+        env.step(i%3)
+    input()
+    env.shutdown()
