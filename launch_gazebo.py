@@ -14,20 +14,21 @@ from time import sleep
    
 class SimpleEnv():
     def __init__(self):
+        # initialize node
         rospy.init_node('turtlebot3_pointop_key', anonymous=False)
-        self.lower = Lower()
-        ros_path = os.path.dirname(subprocess.check_output(["which", "roscore"]))
 
-        launchfile = "/home/dongjoo/catkin_ws/src/cs470-stroker/turtlebot3_simulations/turtlebot3_gazebo/launch/turtlebot3_empty_world.launch"
-        
+        # launch gazebo
+        ros_path = os.path.dirname(subprocess.check_output(["which", "roscore"]))
+        #launchfile = "/home/dongjoo/catkin_ws/src/cs470-stroker/turtlebot3_simulations/turtlebot3_gazebo/launch/turtlebot3_empty_world.launch"
+        launchfile = "/home/jaehyun/catkin_ws/src/turtlebot3_simulations/turtlebot3_gazebo/launch/turtlebot3_empty_world.launch"
         os.environ["TURTLEBOT3_MODEL"] = "burger"
         self.pid = subprocess.Popen([sys.executable, os.path.join(ros_path, b"roslaunch"), "-p", "11311", launchfile])
-        sleep(10)
+        sleep(1) # wait 1 second to let gazebo launch completely
         print ("Gazebo launched!")
-        self.state = [0, 0, 0]
 
-    def observation(self):
-        return self.lower.get_state()
+        # initialize
+        self.lower = Lower()
+        self.state = [0, 0, 0]
 
     def step(self, action):
         cmd = Twist()
@@ -41,9 +42,8 @@ class SimpleEnv():
             cmd.linear.x = 0.05
             cmd.angular.z = -0.3
 
-        self.lower.command(cmd)
-        self.state = self.observation()
-        print(self.state)
+        self.state = self.lower.command(cmd)
+        print("state " + str(self.state))
         self.lower.command(Twist())
 
         return self.state, 0, 0, {}
@@ -63,17 +63,16 @@ class SimpleEnv():
         try:
             set_state = rospy.ServiceProxy('/gazebo/set_model_state', SetModelState)
             resp = set_state(state_msg)
-
         except rospy.ServiceException as err:
             print(err)
 
-        state = self.observation()
+        self.state = self.lower.get_state()
+        print("reset" + str(self.state))
 
-        print("reset" + str(state))
-        return state
+        return self.state
 
     def shutdown(self):
-         # Kill gzclient, gzserver and roscore
+         # kill gzclient and gzserver 
         tmp = os.popen("ps -Af").read()
         gzclient_count = tmp.count('gzclient')
         gzserver_count = tmp.count('gzserver')
@@ -83,7 +82,7 @@ class SimpleEnv():
         if gzserver_count > 0:
             os.system("killall -9 gzserver")
 
-        if (gzclient_count or gzserver_count >0):
+        if (gzclient_count or gzserver_count > 0):
             os.wait()
 
 class Lower():
@@ -122,17 +121,15 @@ class Lower():
         try:
             (trans, rot) = self.tf_listener.lookupTransform(self.odom_frame, self.base_frame, rospy.Time(0))
             rotation = euler_from_quaternion(rot)
-
         except (tf.Exception, tf.ConnectivityException, tf.LookupException):
             rospy.loginfo("TF Exception")
             return
 
         return (Point(*trans), rotation[2])
 
-
 if __name__ == "__main__":
     env = SimpleEnv()
     for i in range(100):
-        env.step(i%3)
-    input()
+        env.step(i % 3)
+    input() # to wait before shutdown
     env.shutdown()
