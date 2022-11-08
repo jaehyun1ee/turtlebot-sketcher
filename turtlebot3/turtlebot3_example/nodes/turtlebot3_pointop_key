@@ -55,8 +55,8 @@ class Upper():
     def episode(self):
         # parse input
         (goal_dx, goal_dy, goal_d) = self.parse_input()
-        goal_x = self.state[0] + d * goal_dx
-        goal_y = self.state[1] + d * goal_dy
+        goal_x = self.state[0] + goal_d * goal_dx
+        goal_y = self.state[1] + goal_d * goal_dy
         goal_z = self.state[2]
 
         # create controller and initilize command
@@ -118,6 +118,8 @@ class Upper():
             self.state = control.command(cmd)
 
         rospy.loginfo("Stopping the robot...")
+        print("MOVE COMPLETE")
+        print(control.get_state())
         control.command(Twist())
 
     def shutdown(self):
@@ -135,16 +137,16 @@ class Lower():
 
     def command(self, cmd):
         self.cmd_vel.publish(cmd)
-        r.sleep()
+        self.r.sleep()
         return self.get_state()
 
     def get_state(self):
-        resp = model("turtlebot3_burger", "")
-        x = resp.pose.orientation.x
-        y = resp.pose.orientation.y
+        resp = self.model("turtlebot3_burger", "")
+        x = resp.pose.position.x
+        y = resp.pose.position.y
         rot = euler_from_quaternion([resp.pose.orientation.x, resp.pose.orientation.y, resp.pose.orientation.z, resp.pose.orientation.w])
 
-        return [ x, y, rot ]
+        return [ x, y, rot[2] ]
 
     def get_odom(self):
         try:
@@ -167,135 +169,15 @@ class Lower():
             return
 
         return (Point(*trans), rotation[2])
-
-"""
-class GotoPoint():
-    def __init__(self):
-        rospy.init_node('turtlebot3_pointop_key', anonymous=False)
-        rospy.on_shutdown(self.shutdown)
-        self.cmd_vel = rospy.Publisher('cmd_vel', Twist, queue_size=5)
-        position = Point()
-        move_cmd = Twist()
-        r = rospy.Rate(10)
-        self.tf_listener = tf.TransformListener()
-        self.odom_frame = 'odom'
-
-        try:
-            self.tf_listener.waitForTransform(self.odom_frame, 'base_footprint', rospy.Time(), rospy.Duration(1.0))
-            self.base_frame = 'base_footprint'
-        except (tf.Exception, tf.ConnectivityException, tf.LookupException):
-            try:
-                self.tf_listener.waitForTransform(self.odom_frame, 'base_link', rospy.Time(), rospy.Duration(1.0))
-                self.base_frame = 'base_link'
-            except (tf.Exception, tf.ConnectivityException, tf.LookupException):
-                rospy.loginfo("Cannot find transform between odom and base_link or base_footprint")
-                rospy.signal_shutdown("tf Exception")
-
-        (position, rotation) = self.get_odom()
-        last_rotation = 0
-        linear_speed = 1
-        angular_speed = 1
-        (goal_x, goal_y, goal_z) = self.getkey()
-        if goal_z > 180 or goal_z < -180:
-            print("you input wrong z range.")
-            self.shutdown()
-        goal_z = np.deg2rad(goal_z)
-        goal_distance = sqrt(pow(goal_x - position.x, 2) + pow(goal_y - position.y, 2))
-        distance = goal_distance
-
-        while distance > 0.05:
-            (position, rotation) = self.get_odom()
-            x_start = position.x
-            y_start = position.y
-            path_angle = atan2(goal_y - y_start, goal_x- x_start)
-
-            if path_angle < -pi/4 or path_angle > pi/4:
-                if goal_y < 0 and y_start < goal_y:
-                    path_angle = -2*pi + path_angle
-                elif goal_y >= 0 and y_start > goal_y:
-                    path_angle = 2*pi + path_angle
-            if last_rotation > pi-0.1 and rotation <= 0:
-                rotation = 2*pi + rotation
-            elif last_rotation < -pi+0.1 and rotation > 0:
-                rotation = -2*pi + rotation
-            move_cmd.angular.z = angular_speed * path_angle-rotation
-
-            distance = sqrt(pow((goal_x - x_start), 2) + pow((goal_y - y_start), 2))
-            move_cmd.linear.x = min(linear_speed * distance, 0.1)
-
-            if move_cmd.angular.z > 0:
-                move_cmd.angular.z = min(move_cmd.angular.z, 1.5)
-            else:
-                move_cmd.angular.z = max(move_cmd.angular.z, -1.5)
-
-            last_rotation = rotation
-            self.cmd_vel.publish(move_cmd)
-            r.sleep()
-        (position, rotation) = self.get_odom()
-
-        while abs(rotation - goal_z) > 0.05:
-            (position, rotation) = self.get_odom()
-            if goal_z >= 0:
-                if rotation <= goal_z and rotation >= goal_z - pi:
-                    move_cmd.linear.x = 0.00
-                    move_cmd.angular.z = 0.5
-                else:
-                    move_cmd.linear.x = 0.00
-                    move_cmd.angular.z = -0.5
-            else:
-                if rotation <= goal_z + pi and rotation > goal_z:
-                    move_cmd.linear.x = 0.00
-                    move_cmd.angular.z = -0.5
-                else:
-                    move_cmd.linear.x = 0.00
-                    move_cmd.angular.z = 0.5
-            self.cmd_vel.publish(move_cmd)
-            r.sleep()
-
-        rospy.loginfo("Stopping the robot...")
-        self.cmd_vel.publish(Twist())
-
-    def getkey(self):
-        x, y, z = input("| x | y | z |\n").split()
-        if x == 's':
-            self.shutdown()
-        x, y, z = [float(x), float(y), float(z)]
-        return x, y, z
-
-    def get_odom(self):
-        try:
-            (trans, rot) = self.tf_listener.lookupTransform(self.odom_frame, self.base_frame, rospy.Time(0))
-            rotation = euler_from_quaternion(rot)
-
-        except (tf.Exception, tf.ConnectivityException, tf.LookupException):
-            rospy.loginfo("TF Exception")
-            return
-
-        return (Point(*trans), rotation[2])
-
-
-    def shutdown(self):
-        self.cmd_vel.publish(Twist())
-        rospy.sleep(1)
-"""
 
 if __name__ == '__main__':
     try:
+        upper = Upper()
         while not rospy.is_shutdown():
             print(msg)
-            upper = Upper()
             upper.episode()
-
-        """
-        while not rospy.is_shutdown():
-            print(msg)
-            GotoPoint()
-            model = rospy.ServiceProxy('/gazebo/get_model_state', GetModelState)
-            resp = model("turtlebot3_burger", "")
-            print(resp.success)
-            print(resp.pose)
-            print(euler_from_quaternion([resp.pose.orientation.x, resp.pose.orientation.y, resp.pose.orientation.z, resp.pose.orientation.w]))
-        """
-    except:
+    except Exception as err:
         rospy.loginfo("shutdown program.")
+        rospy.loginfo(type(err))
+        rospy.loginfo(err)
 
