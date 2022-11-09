@@ -15,5 +15,8 @@ if __name__ == '__main__':
     env.stop()
     print("final : " + str(env.state))
 
+    input("ENTER TO RESET")
+    env.reset()
+
     input("ENTER TO CLOSE")
     env.close()

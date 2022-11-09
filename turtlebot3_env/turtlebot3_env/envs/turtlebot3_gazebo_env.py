@@ -9,7 +9,7 @@ from gym import spaces
 
 import rospy
 import tf
-from tf.transformations import euler_from_quaternion
+from tf.transformations import euler_from_quaternion, quaternion_from_euler
 from geometry_msgs.msg import Twist, Point, Quaternion
 from gazebo_msgs.msg import ModelState
 from gazebo_msgs.srv import GetModelState, SetModelState
@@ -22,7 +22,7 @@ class Turtlebot3GazeboEnv(gym.Env):
         # launch gazebo
         ros_path = os.path.dirname(subprocess.check_output(["which", "roscore"]))
         #launchfile = "/home/dongjoo/catkin_ws/src/cs470-stroker/turtlebot3_simulations/turtlebot3_gazebo/launch/turtlebot3_empty_world.launch"
-        launchfile = "/home/jaehyun/catkin_ws/src/turtlebot3_simulations/turtlebot3_gazebo/launch/turtlebot3_empty_world.launch"
+        launchfile = str(os.getcwd()) + "/turtlebot3_simulations/turtlebot3_gazebo/launch/turtlebot3_empty_world.launch"         
         os.environ["TURTLEBOT3_MODEL"] = "burger"
         subprocess.Popen([sys.executable, os.path.join(ros_path, b"roslaunch"), "-p", "11311", launchfile])
         print ("Gazebo launched!")
@@ -106,6 +106,11 @@ class Agent():
     def reset(self):
         cmd = ModelState()
         cmd.model_name = self.model_name
+        orientation = quaternion_from_euler(0, 0, np.random.rand() * np.pi * 2 - np.pi)
+        cmd.pose.orientation.x = orientation[0]
+        cmd.pose.orientation.y = orientation[1]
+        cmd.pose.orientation.z = orientation[2]
+        cmd.pose.orientation.w = orientation[3]
         self.set_model_state(cmd)
 
         return self.get_state()
