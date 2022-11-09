@@ -11,11 +11,16 @@ if __name__ == '__main__':
         env.reset()
 
         # a random policy
-        for i in range(50):
+        done = False
+        its = 0
+        while not done:
             action = env.action_space.sample()
-            next_state, _, _, _ = env.step(action)
-            print("action : " + str(action))
-            print("state : " + str(next_state))
+            next_state, reward, done, _ = env.step(action)
+            print("it (" + str(its) + ") ; " + "\nstate : " + str(next_state) + "\naction : " + str(action) + "\nreward : " + str(reward))
+
+            its += 1
+            if (its == 200):
+                break
         env.stop()
         print("final : " + str(env.state))
 
