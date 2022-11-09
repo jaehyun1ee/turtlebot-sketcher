@@ -26,8 +26,8 @@ class SimpleEnv():
         print ("Gazebo launched!")
 
         # initialize
-        self.lower = Lower()
-        self.state = [0, 0, 0]
+        self.agent = Agent() # for issuing commands
+        self.state = [0, 0, 0] # x-coord, y-coord, and rotation angle in radians
 
     def step(self, action):
         cmd = Twist()
@@ -41,30 +41,30 @@ class SimpleEnv():
             cmd.linear.x = 0.05
             cmd.angular.z = -0.3
 
-        self.state = self.lower.command(cmd)
+        self.state = self.agent.command(cmd)
         print("action : " + str(action))
         print("state : " + str(self.state))
 
         return self.state, 0, 0, {}
 
     def reset(self):
-        return self.lower.reset()
+        return self.agent.reset()
 
     def shutdown(self):
-         # kill gzclient and gzserver 
+         # find gzclient and gzserver 
         tmp = os.popen("ps -Af").read()
         gzclient_count = tmp.count('gzclient')
         gzserver_count = tmp.count('gzserver')
 
+        # kill gzclient and gzserver
         if gzclient_count > 0:
             os.system("killall -9 gzclient")
         if gzserver_count > 0:
             os.system("killall -9 gzserver")
-
         if (gzclient_count or gzserver_count > 0):
             os.wait()
 
-class Lower():
+class Agent():
     def __init__(self):
         # for issuing command
         self.cmd_vel = rospy.Publisher('cmd_vel', Twist, queue_size=5)
@@ -104,7 +104,7 @@ if __name__ == "__main__":
     env = SimpleEnv()
     for i in range(100):
         env.step(i % 3)
-    env.lower.command(Twist())
+    env.agent.command(Twist()) # to stop the turtlebot after all episode
     input("ENTER for RESET") # to wait before reset 
     env.reset()
     input("ENTER for SHUTDOWN") # to wait before shutdown
