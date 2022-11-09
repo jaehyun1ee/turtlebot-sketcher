@@ -21,7 +21,6 @@ class Turtlebot3GazeboEnv(gym.Env):
 
         # launch gazebo
         ros_path = os.path.dirname(subprocess.check_output(["which", "roscore"]))
-        #launchfile = "/home/dongjoo/catkin_ws/src/cs470-stroker/turtlebot3_simulations/turtlebot3_gazebo/launch/turtlebot3_empty_world.launch"
         launchfile = str(os.getcwd()) + "/turtlebot3_simulations/turtlebot3_gazebo/launch/turtlebot3_empty_world.launch"         
         os.environ["TURTLEBOT3_MODEL"] = "burger"
         subprocess.Popen([sys.executable, os.path.join(ros_path, b"roslaunch"), "-p", "11311", launchfile])
@@ -33,31 +32,53 @@ class Turtlebot3GazeboEnv(gym.Env):
         # initialize environment (MDP definition)
         self.observation_space = spaces.Dict({
             "agent" : spaces.Box(low=np.array([-np.inf, -np.inf, -np.pi]), high=np.array([np.inf, np.inf, np.pi]), dtype=np.float64), # x-coord, y-coord, and rotation angle in radians
-            "target" : spaces.Box(low=np.array([-np.inf, -np.inf]), high=np.array([np.inf, np.inf]), dtype=np.float32),        
+            "target" : spaces.Box(low=np.array([-np.inf, -np.inf]), high=np.array([np.inf, np.inf]), dtype=np.float64),        
         })
         self.action_space = spaces.Box(low=np.array([-1.5, -1.5]), high=np.array([1.5, 1.5]), dtype=np.float64) # linear-x, and angular-z
         self.state = {
             "agent" : np.array([0, 0, 0]),
-            "target" : np.random.rand(2) * 5
+            "target" : np.random.rand(2) * 3
         } 
 
     def step(self, action):
+        # perform action on environment
         cmd = Twist()
         cmd.linear.x = action[0]
         cmd.angular.z = action[1]
-        self.state["agent"] = self.agent.move(cmd)
+        next_state = self.agent.move(cmd)
 
-        return self.state, 0, 0, {}
+        # compute reward
+        reward = self.compute_reward(self.state["agent"], next_state)
+
+        # update state
+        self.state["agent"] = next_state
+
+        # query if the episode is done
+        done = self.is_done()
+
+        return self.state, reward, done, {}
+
+    def reset(self):
+        self.state["agent"] = self.agent.reset()
+        self.state["target"] = np.random.rand(2) * 3
+
+        return self.state, {}
 
     def stop(self):
         self.state["agent"] = self.agent.move(Twist())
 
-    def reset(self):
-        self.state["agent"] = self.agent.reset()
-        self.state["target"] = np.random.rand(2) * 5
+    def compute_reward(self, state, next_state):
+       return self.dist_to_goal(state) - self.dist_to_goal(next_state)
 
-        return self.state, {}
+    def is_done(self):
+        d = self.dist_to_goal(self.state["agent"])
+        return d > 3 or d < 0.05
 
+    def dist_to_goal(self, state):
+        dx = self.state["target"][0] - state[0]
+        dy = self.state["target"][1] - state[1]
+        return sqrt(dx ** 2 + dy ** 2)
+    
     def close(self):
          # find gzclient and gzserver 
         tmp = os.popen("ps -Af").read()
