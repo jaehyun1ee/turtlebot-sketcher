@@ -1,5 +1,15 @@
 # CS470 Turtlebot3 Sketcher - Stroker
 
+## Initialize submodules
+
+after cloning this repository,
+
+```
+git submodule update --init
+```
+
+to clone the turtlebot3_simulations submodule
+
 ## To run this example,
 
 In `~/catkin_ws`,
