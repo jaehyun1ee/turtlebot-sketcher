@@ -37,48 +37,61 @@ class Turtlebot3GazeboEnv(gym.Env):
         self.action_space = spaces.Box(low=np.array([-1.5, -1.5]), high=np.array([1.5, 1.5]), dtype=np.float64) # linear-x, and angular-z
         self.state = {
             "agent" : np.array([0, 0, 0]),
-            "target" : np.random.rand(2) * 3
+            "target" : self.random_vector(3),
         } 
 
+    # perform one step in an episode
     def step(self, action):
         # perform action on environment
         cmd = Twist()
         cmd.linear.x = action[0]
         cmd.angular.z = action[1]
-        next_state = self.agent.move(cmd)
+        # update state
+        self.state["agent"] = self.agent.move(cmd)
 
         # compute reward
-        reward = self.compute_reward(self.state["agent"], next_state)
-
-        # update state
-        self.state["agent"] = next_state
+        reward = self.compute_reward()
 
         # query if the episode is done
         done = self.is_done()
 
         return self.state, reward, done, {}
 
+    # reset the environment
     def reset(self):
         self.state["agent"] = self.agent.reset()
-        self.state["target"] = np.random.rand(2) * 3
+        self.state["target"] = self.random_vector(3)
 
         return self.state, {}
 
+    # stop the agent
     def stop(self):
         self.state["agent"] = self.agent.move(Twist())
 
-    def compute_reward(self, state, next_state):
-       return self.dist_to_goal(state) - self.dist_to_goal(next_state)
+    # reward function
+    def compute_reward(self):
+        dist = self.dist_to_goal() # distance to goal
+        cos_similarity = np.dot(self.state["agent"][:2], self.state["target"]) / (np.linalg.norm(self.state["agent"][:2]) * np.linalg.norm(self.state["target"])) # cosine similarity
+        return (-10 * dist) + (5 * cos_similarity) 
 
+    # returns true if the episode is done
     def is_done(self):
-        d = self.dist_to_goal(self.state["agent"])
-        return d > 3 or d < 0.05
+        d = self.dist_to_goal()
+        return d > 5 or d < 0.05
 
-    def dist_to_goal(self, state):
-        dx = self.state["target"][0] - state[0]
-        dy = self.state["target"][1] - state[1]
+    # returns the distance between the current agent and the goal
+    def dist_to_goal(self):
+        dx = self.state["target"][0] - self.state["agent"][0]
+        dy = self.state["target"][1] - self.state["agent"][1]
         return sqrt(dx ** 2 + dy ** 2)
+
+    # returns a random 2D vector of length d
+    def random_vector(self, d):
+        v = np.random.rand(2)
+        v_unit = v / np.linalg.norm(v)
+        return v_unit * d
     
+    # find and kill gazebo
     def close(self):
          # find gzclient and gzserver 
         tmp = os.popen("ps -Af").read()
@@ -110,12 +123,14 @@ class Agent():
         self.rate = rospy.Rate(10)
         self.model_name = "turtlebot3_burger"
 
+    # issue a move command to the turtlebot and returns its updated position
     def move(self, cmd):
         self.cmd_vel.publish(cmd)
         self.rate.sleep()
 
         return self.get_state()
 
+    # resets the turtlebot in the origin with a random orientation
     def reset(self):
         cmd = ModelState()
         cmd.model_name = self.model_name
