@@ -1,6 +1,6 @@
 import sys
 import os
-#import gym
+import gym
 import subprocess
 from math import radians, copysign, sqrt, pow, pi, atan2
 import numpy as np
@@ -12,15 +12,15 @@ from geometry_msgs.msg import Twist, Point, Quaternion
 from gazebo_msgs.msg import ModelState
 from gazebo_msgs.srv import GetModelState, SetModelState
    
-class TurtlebotGazeboEnv():
+class Turtlebot3GazeboEnv(gym.Env):
     def __init__(self):
         # initialize node
         rospy.init_node('turtlebot3_pointop_key', anonymous=False)
 
         # launch gazebo
         ros_path = os.path.dirname(subprocess.check_output(["which", "roscore"]))
-        #launchfile = "/home/dongjoo/catkin_ws/src/cs470-stroker/turtlebot3_simulations/turtlebot3_gazebo/launch/turtlebot3_empty_world.launch"
-        launchfile = "/home/jaehyun/catkin_ws/src/turtlebot3_simulations/turtlebot3_gazebo/launch/turtlebot3_empty_world.launch"
+        launchfile = "/home/dongjoo/catkin_ws/src/cs470-stroker/turtlebot3_simulations/turtlebot3_gazebo/launch/turtlebot3_empty_world.launch"
+        #launchfile = "/home/jaehyun/catkin_ws/src/turtlebot3_simulations/turtlebot3_gazebo/launch/turtlebot3_empty_world.launch"
         os.environ["TURTLEBOT3_MODEL"] = "burger"
         subprocess.Popen([sys.executable, os.path.join(ros_path, b"roslaunch"), "-p", "11311", launchfile])
         print ("Gazebo launched!")
@@ -108,7 +108,7 @@ class Agent():
         return [ x, y, rot[2] ]
 
 if __name__ == "__main__":
-    env = TurtlebotGazeboEnv()
+    env = Turtlebot3GazeboEnv()
     for i in range(100):
         env.step(i % 3)
     env.agent.move(Twist()) # to stop the turtlebot after all episode
