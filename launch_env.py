@@ -16,13 +16,13 @@ if __name__ == '__main__':
         while not done:
             action = env.action_space.sample()
             next_state, reward, done, _ = env.step(action)
-            print("it (" + str(its) + ") ; " + "\nstate : " + str(next_state) + "\naction : " + str(action) + "\nreward : " + str(reward))
+            print(f"it ({its});\nstate : {next_state}\naction : {action}\nreward : {reward}")
 
             its += 1
             if (its == 200):
                 break
         env.stop()
-        print("final : " + str(env.state))
+        print(f"final : {env.state}")
 
         # continue or not?
         key = int(input("ENTER 1 TO CONTINUE : "))
