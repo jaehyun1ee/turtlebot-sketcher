@@ -41,7 +41,7 @@ class SimpleEnv():
             cmd.linear.x = 0.05
             cmd.angular.z = -0.3
 
-        self.state = self.agent.command(cmd)
+        self.state = self.agent.move(cmd)
         print("action : " + str(action))
         print("state : " + str(self.state))
 
@@ -79,7 +79,7 @@ class Agent():
 
         self.rate = rospy.Rate(10)
 
-    def command(self, cmd):
+    def move(self, cmd):
         self.cmd_vel.publish(cmd)
         self.rate.sleep()
 
@@ -104,7 +104,7 @@ if __name__ == "__main__":
     env = SimpleEnv()
     for i in range(100):
         env.step(i % 3)
-    env.agent.command(Twist()) # to stop the turtlebot after all episode
+    env.agent.move(Twist()) # to stop the turtlebot after all episode
     input("ENTER for RESET") # to wait before reset 
     env.reset()
     input("ENTER for SHUTDOWN") # to wait before shutdown
