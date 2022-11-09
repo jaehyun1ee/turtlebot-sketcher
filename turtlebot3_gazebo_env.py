@@ -12,7 +12,7 @@ from geometry_msgs.msg import Twist, Point, Quaternion
 from gazebo_msgs.msg import ModelState
 from gazebo_msgs.srv import GetModelState, SetModelState
    
-class SimpleEnv():
+class TurtlebotGazeboEnv():
     def __init__(self):
         # initialize node
         rospy.init_node('turtlebot3_pointop_key', anonymous=False)
@@ -26,6 +26,9 @@ class SimpleEnv():
         print ("Gazebo launched!")
 
         # initialize
+        # self.observation_space
+        # self.action_space
+        # self.elements
         self.agent = Agent() # for issuing commands
         self.state = [0, 0, 0] # x-coord, y-coord, and rotation angle in radians
 
@@ -49,6 +52,8 @@ class SimpleEnv():
 
     def reset(self):
         return self.agent.reset()
+
+    #def render(self):
 
     def shutdown(self):
          # find gzclient and gzserver 
@@ -77,7 +82,9 @@ class Agent():
         rospy.wait_for_service('/gazebo/set_model_state')
         self.set_model_state = rospy.ServiceProxy('/gazebo/set_model_state', SetModelState)
 
+        # initialize
         self.rate = rospy.Rate(10)
+        self.model_name = "turtlebot3_burger"
 
     def move(self, cmd):
         self.cmd_vel.publish(cmd)
@@ -87,13 +94,13 @@ class Agent():
 
     def reset(self):
         cmd = ModelState()
-        cmd.model_name = "turtlebot3_burger"
+        cmd.model_name = self.model_name
         self.set_model_state(cmd)
 
         return self.get_state()
 
     def get_state(self):
-        resp = self.get_model_state("turtlebot3_burger", "")
+        resp = self.get_model_state(self.model_name, "")
         x = resp.pose.position.x
         y = resp.pose.position.y
         rot = euler_from_quaternion([resp.pose.orientation.x, resp.pose.orientation.y, resp.pose.orientation.z, resp.pose.orientation.w])
@@ -101,7 +108,7 @@ class Agent():
         return [ x, y, rot[2] ]
 
 if __name__ == "__main__":
-    env = SimpleEnv()
+    env = TurtlebotGazeboEnv()
     for i in range(100):
         env.step(i % 3)
     env.agent.move(Twist()) # to stop the turtlebot after all episode
