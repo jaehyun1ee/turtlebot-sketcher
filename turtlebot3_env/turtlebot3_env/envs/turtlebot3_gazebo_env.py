@@ -1,9 +1,11 @@
 import sys
 import os
-import gym
 import subprocess
 from math import radians, copysign, sqrt, pow, pi, atan2
 import numpy as np
+
+import gym
+from gym import spaces
 
 import rospy
 import tf
@@ -15,22 +17,29 @@ from gazebo_msgs.srv import GetModelState, SetModelState
 class Turtlebot3GazeboEnv(gym.Env):
     def __init__(self):
         # initialize node
-        rospy.init_node('turtlebot3_pointop_key', anonymous=False)
+        rospy.init_node('turtlebot3_env', anonymous=False)
 
         # launch gazebo
         ros_path = os.path.dirname(subprocess.check_output(["which", "roscore"]))
-        launchfile = "/home/dongjoo/catkin_ws/src/cs470-stroker/turtlebot3_simulations/turtlebot3_gazebo/launch/turtlebot3_empty_world.launch"
-        #launchfile = "/home/jaehyun/catkin_ws/src/turtlebot3_simulations/turtlebot3_gazebo/launch/turtlebot3_empty_world.launch"
+        #launchfile = "/home/dongjoo/catkin_ws/src/cs470-stroker/turtlebot3_simulations/turtlebot3_gazebo/launch/turtlebot3_empty_world.launch"
+        launchfile = "/home/jaehyun/catkin_ws/src/turtlebot3_simulations/turtlebot3_gazebo/launch/turtlebot3_empty_world.launch"
         os.environ["TURTLEBOT3_MODEL"] = "burger"
         subprocess.Popen([sys.executable, os.path.join(ros_path, b"roslaunch"), "-p", "11311", launchfile])
         print ("Gazebo launched!")
 
-        # initialize
-        # self.observation_space
-        # self.action_space
-        # self.elements
-        self.agent = Agent() # for issuing commands
-        self.state = [0, 0, 0] # x-coord, y-coord, and rotation angle in radians
+        # initialize agent
+        self.agent = Agent()
+
+        # initialize environment (MDP definition)
+        self.observation_space = spaces.Dict({
+            "agent" : spaces.Box(low=np.array([-np.inf, -np.inf, -np.pi]), high=np.array([np.inf, np.inf, np.pi]), dtype=np.float32), # x-coord, y-coord, and rotation angle in radians
+            "target" : spaces.Box(low=np.array([-np.inf, -np.inf]), high=np.array([np.inf, np.inf]), dtype=np.float32),        
+        })
+        self.action_space = spaces.Discrete(3)
+        self.state = {
+            "agent" : np.array([0, 0, 0]),
+            "target" : np.random.rand(2) * 5
+        } 
 
     def step(self, action):
         cmd = Twist()
@@ -44,18 +53,20 @@ class Turtlebot3GazeboEnv(gym.Env):
             cmd.linear.x = 0.05
             cmd.angular.z = -0.3
 
-        self.state = self.agent.move(cmd)
-        print("action : " + str(action))
-        print("state : " + str(self.state))
+        self.state["agent"] = self.agent.move(cmd)
 
         return self.state, 0, 0, {}
 
+    def stop(self):
+        self.state["agent"] = self.agent.move(Twist())
+
     def reset(self):
-        return self.agent.reset()
+        self.state["agent"] = self.agent.reset()
+        self.state["target"] = np.random.rand(2) * 5
 
-    #def render(self):
+        return self.state, {}
 
-    def shutdown(self):
+    def close(self):
          # find gzclient and gzserver 
         tmp = os.popen("ps -Af").read()
         gzclient_count = tmp.count('gzclient')
@@ -105,14 +116,4 @@ class Agent():
         y = resp.pose.position.y
         rot = euler_from_quaternion([resp.pose.orientation.x, resp.pose.orientation.y, resp.pose.orientation.z, resp.pose.orientation.w])
 
-        return [ x, y, rot[2] ]
-
-if __name__ == "__main__":
-    env = Turtlebot3GazeboEnv()
-    for i in range(100):
-        env.step(i % 3)
-    env.agent.move(Twist()) # to stop the turtlebot after all episode
-    input("ENTER for RESET") # to wait before reset 
-    env.reset()
-    input("ENTER for SHUTDOWN") # to wait before shutdown
-    env.shutdown()
+        return np.array([ x, y, rot[2] ])
