@@ -1,8 +1,10 @@
 # CS470 Turtlebot3 Sketcher - Stroker
 
+Ubuntu 20.04 LTS, ROS Noetic, and Parallels for Mac M1
+
 ## Initialize submodules
 
-after cloning this repository,
+After cloning this repository,
 
 ```
 git submodule update --init
@@ -14,26 +16,31 @@ to clone the turtlebot3_simulations submodule
 
 In `~/catkin_ws`,
 
-1. Build
+### Build
 
 ```
 catkin_make
 ```
 
-2. In one terminal, run `roscore`
+### In one terminal, run `roscore`
 
 ```
 roscore
 ```
 
-3. In another terminal, run turtlebot3 gazebo simulation
+### In another terminal, run `launch_env.py`
 
 ```
-export TURTLEBOT3_MODEL=burger
-roslaunch turtlebot3_gazebo turtlebot3_empty_world.launch
+python3 launch_env.py
 ```
 
-4. In another terminal, run point operation
+### To turn off the gazebo gui,
+
+In `turtlebot3_empty_world.launch`, change
+
+```
+<arg name="gui" value="true"/> to, <arg name="gui" value="false"/> 
+```
 
 ```
 export TURTLEBOT3_MODEL=burger
