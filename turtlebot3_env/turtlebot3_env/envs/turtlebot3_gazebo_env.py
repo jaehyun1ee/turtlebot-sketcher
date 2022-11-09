@@ -32,10 +32,10 @@ class Turtlebot3GazeboEnv(gym.Env):
 
         # initialize environment (MDP definition)
         self.observation_space = spaces.Dict({
-            "agent" : spaces.Box(low=np.array([-np.inf, -np.inf, -np.pi]), high=np.array([np.inf, np.inf, np.pi]), dtype=np.float32), # x-coord, y-coord, and rotation angle in radians
+            "agent" : spaces.Box(low=np.array([-np.inf, -np.inf, -np.pi]), high=np.array([np.inf, np.inf, np.pi]), dtype=np.float64), # x-coord, y-coord, and rotation angle in radians
             "target" : spaces.Box(low=np.array([-np.inf, -np.inf]), high=np.array([np.inf, np.inf]), dtype=np.float32),        
         })
-        self.action_space = spaces.Discrete(3)
+        self.action_space = spaces.Box(low=np.array([-1.5, -1.5]), high=np.array([1.5, 1.5]), dtype=np.float64) # linear-x, and angular-z
         self.state = {
             "agent" : np.array([0, 0, 0]),
             "target" : np.random.rand(2) * 5
@@ -43,16 +43,8 @@ class Turtlebot3GazeboEnv(gym.Env):
 
     def step(self, action):
         cmd = Twist()
-        if action == 0: #FORWARD
-            cmd.linear.x = 0.3
-            cmd.angular.z = 0
-        elif action == 1: #LEFT
-            cmd.linear.x = 0.05
-            cmd.angular.z = 0.3
-        elif action == 2: #RIGHT
-            cmd.linear.x = 0.05
-            cmd.angular.z = -0.3
-
+        cmd.linear.x = action[0]
+        cmd.angular.z = action[1]
         self.state["agent"] = self.agent.move(cmd)
 
         return self.state, 0, 0, {}
