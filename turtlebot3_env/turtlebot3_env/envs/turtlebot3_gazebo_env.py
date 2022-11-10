@@ -13,7 +13,7 @@ from tf.transformations import euler_from_quaternion, quaternion_from_euler
 from geometry_msgs.msg import Twist, Point, Quaternion
 from gazebo_msgs.msg import ModelState
 from gazebo_msgs.srv import GetModelState, SetModelState
-   
+
 class Turtlebot3GazeboEnv(gym.Env):
     def __init__(self):
         # initialize node
@@ -150,3 +150,33 @@ class Agent():
         rot = euler_from_quaternion([resp.pose.orientation.x, resp.pose.orientation.y, resp.pose.orientation.z, resp.pose.orientation.w])
 
         return np.array([ x, y, rot[2] ])
+
+
+class Turtlebot3GazeboDiscreteEnv(Turtlebot3GazeboEnv):
+    def __init__(self):
+        super().__init__()
+        self.action_space = spaces.Discrete(3)
+
+    def step(self, action):
+        # perform action on environment
+        cmd = Twist()
+        if action == 0:
+            cmd.linear.x = 0.1
+            cmd.angular.z = 0
+        elif action == 1:
+            cmd.linear.x = 0.1
+            cmd.angular.z = -0.5
+        elif action == 2:
+            cmd.linear.x = 0.1
+            cmd.angular.z = 0.5
+        # update state
+        self.state["agent"] = self.agent.move(cmd)
+
+        # compute reward
+        reward = self.compute_reward()
+
+        # query if the episode is done
+        done = self.is_done()
+
+        return self.state, reward, done, {}
+        
