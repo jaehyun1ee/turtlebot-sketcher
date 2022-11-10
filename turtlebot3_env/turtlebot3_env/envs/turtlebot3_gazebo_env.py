@@ -30,10 +30,7 @@ class Turtlebot3GazeboEnv(gym.Env):
         self.agent = Agent()
 
         # initialize environment (MDP definition)
-        self.observation_space = spaces.Dict({
-            "agent" : spaces.Box(low=np.array([-1, -1, -np.pi]), high=np.array([1, 1, np.pi]), dtype=np.float64), # x-coord, y-coord, and rotation angle in radians
-            "target" : spaces.Box(low=np.array([-np.inf, -np.inf]), high=np.array([np.inf, np.inf]), dtype=np.float64),        
-        })
+        self.observation_space = spaces.Box(low=np.array([-1, -1, -np.pi, -1, -1]), high=np.array([1, 1, np.pi, 1, 1]), dtype=np.float64) # (x_agent, y_agent, rot_agent, x_goal, y_goal)
         self.action_space = spaces.Box(low=np.array([-1.5, -1.5]), high=np.array([1.5, 1.5]), dtype=np.float64) # linear-x, and angular-z
         self.state = {
             "agent" : np.array([0, 0, 0]),
@@ -55,19 +52,8 @@ class Turtlebot3GazeboEnv(gym.Env):
         # query if the episode is done
         done = self.is_done()
 
-        return self.state, reward, done, {}
-
-    # reset the environment
-    def reset(self):
-        self.state["agent"] = self.agent.reset()
-        self.state["target"] = self.random_vector()
-
-        return self.state, {}
-
-    # stop the agent
-    def stop(self):
-        self.state["agent"] = self.agent.move(Twist())
-
+        return self.state_to_obs(), reward, done, {}
+    
     # reward function
     def compute_reward(self):
         dist = self.dist_to_goal() # distance to goal
@@ -79,6 +65,21 @@ class Turtlebot3GazeboEnv(gym.Env):
         d = self.dist_to_goal()
         return d > 5 or d < 0.05
 
+    # reset the environment
+    def reset(self):
+        self.state["agent"] = self.agent.reset()
+        self.state["target"] = self.random_vector()
+
+        return self.state_to_obs(), {}
+
+    # stop the agent
+    def stop(self):
+        self.state["agent"] = self.agent.move(Twist())
+
+    # state (dict) to observation (np array)
+    def state_to_obs(self):
+        return np.concatenate([self.state["agent"], self.state["target"]])
+ 
     # returns the distance between the current agent and the goal
     def dist_to_goal(self):
         dx = self.state["target"][0] - self.state["agent"][0]
