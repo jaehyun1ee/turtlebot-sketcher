@@ -29,8 +29,16 @@ class Turtlebot3GazeboEnv(gym.Env):
         # initialize agent
         self.agent = Agent()
 
+        # track
+        self.track_width = 0.01
+        self.track_length = 0
+        self.track_unit = np.array([0, 0])
+        self.track_ortho_unit = np.array([0, 0])
+        self.track_tile_num = 10
+        self.track_tile_visited = np.array([False for _ in range(self.track_tile_num)])
+
         # initialize environment (MDP definition)
-        self.observation_space = spaces.Box(low=np.array([-1, -1, -np.pi, -1, -1, 0, -1]), high=np.array([1, 1, np.pi, 1, 1, 4, 1]), shape=(7,), dtype=np.float64) # (x_agent, y_agent, rot_agent, x_goal, y_goal, dist_to_goal, similarity_to_goal) TODO what is the min/max of cosine similarity?
+        self.observation_space = spaces.Box(low=np.array([-1, -1, -np.pi, -1, -1, 0, -1]), high=np.array([1, 1, np.pi, 1, 1, 4, 1]), shape=(7,), dtype=np.float64) # (x_agent, y_agent, rot_agent, x_goal, y_goal, dist_to_goal, similarity_to_goal)
         self.action_space = spaces.Box(low=np.array([0, -1.5]), high=np.array([1.5, 1.5]), shape=(2,), dtype=np.float32) # linear-x, and angular-z
         self.state = {
             "agent" : np.array([0, 0, 0]),
@@ -52,27 +60,36 @@ class Turtlebot3GazeboEnv(gym.Env):
         # update state
         self.state["agent"] = self.agent.move(cmd)
         self.state["info"] = self.get_info()
+
+        # compute tile index
+        track_tile_idx = self.get_track_tile()
         
         # compute reward
-        reward = self.compute_reward()
+        reward = self.compute_reward(track_tile_idx)
 
         # query if the episode is done
-        done = self.is_done()
+        done = self.is_done(track_tile_idx)
 
         return self.state_to_obs(), reward, done, {}
     
     # reward function
-    def compute_reward(self):
+    def compute_reward(self, track_tile_idx):
+        # living cost
         reward = -0.1
-        if not self.is_in_state():
+
+        # out of track
+        if track_tile_idx < 0:
             reward -= 100
-        else:
-            reward += 1000 / self.init_dist * self.mov_dist
+        # newly visited tile
+        elif not self.track_tile_visited[track_tile_idx]:
+            self.track_tile_visited[track_tile_idx] = True
+            reward += 1000 / self.track_tile_num
+
         return reward 
 
     # returns true if the episode is done
-    def is_done(self):
-        if not self.is_in_track():
+    def is_done(self, track_tile_idx):
+        if track_tile_idx < 0:
             return True
         d = self.dist_to_goal()
         return d < 0.01
@@ -82,6 +99,7 @@ class Turtlebot3GazeboEnv(gym.Env):
         self.state["agent"] = self.agent.reset()
         self.state["target"] = self.random_vector()
         self.state["info"] = self.get_info()
+        self.set_track()
 
         return self.state_to_obs()
 
@@ -101,7 +119,7 @@ class Turtlebot3GazeboEnv(gym.Env):
     # return updated (recomputed) info
     def get_info(self):
         return [ self.dist_to_goal(), self.similarity_to_goal() ]
- 
+
     # returns the distance between the current agent and the goal
     def dist_to_goal(self):
         dx = self.state["target"][0] - self.state["agent"][0]
@@ -124,9 +142,24 @@ class Turtlebot3GazeboEnv(gym.Env):
             rand = np.random.rand(2) * 2 - 1
         return rand
 
-    # returns agent is in track
-    def is_in_track(self):
-        pass
+    # 
+    def set_track(self):
+        self.track_length = np.linalg.norm(self.state["target"])
+        self.track_unit = self.state["target"] / self.track_length
+        self.track_ortho_unit = np.array([ -self.track_unit[1], self.track_unit[0] ])
+        self.track_tile_visited = np.array([False for _ in range(self.track_tile_num)])
+
+    # returns the tile number where the agent is located at, and returns -1 if out of track
+    def get_track_tile(self):
+        # project agent's position into track
+        a = np.dot(self.state["agent"][:2], self.track_unit)
+        b = np.dot(self.state["agent"][:2], self.track_ortho_unit)
+
+        # agent is out of track
+        if not (a >= 0 and a <= self.track_length and b >= -self.track_width and b <= self.track_width):
+            return -1
+
+        return int(a * self.track_tile_num / self.track_length)
     
     # find and kill gazebo
     def close(self):
