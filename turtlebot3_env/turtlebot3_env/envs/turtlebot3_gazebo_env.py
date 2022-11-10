@@ -31,13 +31,13 @@ class Turtlebot3GazeboEnv(gym.Env):
 
         # initialize environment (MDP definition)
         self.observation_space = spaces.Dict({
-            "agent" : spaces.Box(low=np.array([-np.inf, -np.inf, -np.pi]), high=np.array([np.inf, np.inf, np.pi]), dtype=np.float64), # x-coord, y-coord, and rotation angle in radians
+            "agent" : spaces.Box(low=np.array([-1, -1, -np.pi]), high=np.array([1, 1, np.pi]), dtype=np.float64), # x-coord, y-coord, and rotation angle in radians
             "target" : spaces.Box(low=np.array([-np.inf, -np.inf]), high=np.array([np.inf, np.inf]), dtype=np.float64),        
         })
         self.action_space = spaces.Box(low=np.array([-1.5, -1.5]), high=np.array([1.5, 1.5]), dtype=np.float64) # linear-x, and angular-z
         self.state = {
             "agent" : np.array([0, 0, 0]),
-            "target" : self.random_vector(3),
+            "target" : self.random_vector(),
         } 
 
     # perform one step in an episode
@@ -60,7 +60,7 @@ class Turtlebot3GazeboEnv(gym.Env):
     # reset the environment
     def reset(self):
         self.state["agent"] = self.agent.reset()
-        self.state["target"] = self.random_vector(3)
+        self.state["target"] = self.random_vector()
 
         return self.state, {}
 
@@ -85,11 +85,9 @@ class Turtlebot3GazeboEnv(gym.Env):
         dy = self.state["target"][1] - self.state["agent"][1]
         return sqrt(dx ** 2 + dy ** 2)
 
-    # returns a random 2D vector of length d
-    def random_vector(self, d):
-        v = np.random.rand(2)
-        v_unit = v / np.linalg.norm(v)
-        return v_unit * d
+    # returns a random 2D vector in (-1, 1) x (-1, 1)
+    def random_vector(self):
+        return np.random.rand(2) * 2 - 1
     
     # find and kill gazebo
     def close(self):
