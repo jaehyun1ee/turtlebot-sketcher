@@ -30,8 +30,8 @@ class Turtlebot3GazeboEnv(gym.Env):
         self.agent = Agent()
 
         # initialize environment (MDP definition)
-        self.observation_space = spaces.Box(low=np.array([-1, -1, -np.pi, -1, -1, 0, -np.inf]), high=np.array([1, 1, np.pi, 1, 1, 4, np.inf]), dtype=np.float64) # (x_agent, y_agent, rot_agent, x_goal, y_goal, dist_to_goal, similarity_to_goal) TODO what is the min/max of cosine similarity?
-        self.action_space = spaces.Box(low=np.array([-1.5, -1.5]), high=np.array([1.5, 1.5]), dtype=np.float64) # linear-x, and angular-z
+        self.observation_space = spaces.Box(low=np.array([-1, -1, -np.pi, -1, -1, 0, -1]), high=np.array([1, 1, np.pi, 1, 1, 4, 1]), shape=(7,), dtype=np.float64) # (x_agent, y_agent, rot_agent, x_goal, y_goal, dist_to_goal, similarity_to_goal) TODO what is the min/max of cosine similarity?
+        self.action_space = spaces.Box(low=np.array([0, -1.5]), high=np.array([1.5, 1.5]), shape=(2,), dtype=np.float32) # linear-x, and angular-z
         self.state = {
             "agent" : np.array([0, 0, 0]),
             "target" : self.random_vector(),
@@ -52,7 +52,7 @@ class Turtlebot3GazeboEnv(gym.Env):
         # update state
         self.state["agent"] = self.agent.move(cmd)
         self.state["info"] = self.get_info()
-
+        
         # compute reward
         reward = self.compute_reward()
 
@@ -63,14 +63,19 @@ class Turtlebot3GazeboEnv(gym.Env):
     
     # reward function
     def compute_reward(self):
-        dist = self.state["info"][0] # distance to goal
-        cos_similarity = self.state["info"][1] # cosine similarity
-        return (-10 * dist) + (5 * cos_similarity) 
+        reward = -0.1
+        if not self.is_in_state():
+            reward -= 100
+        else:
+            reward += 1000 / self.init_dist * self.mov_dist
+        return reward 
 
     # returns true if the episode is done
     def is_done(self):
+        if not self.is_in_track():
+            return True
         d = self.dist_to_goal()
-        return d > 5 or d < 0.05
+        return d < 0.01
 
     # reset the environment
     def reset(self):
@@ -78,7 +83,7 @@ class Turtlebot3GazeboEnv(gym.Env):
         self.state["target"] = self.random_vector()
         self.state["info"] = self.get_info()
 
-        return self.state_to_obs(), {}
+        return self.state_to_obs()
 
     # stop the agent
     def stop(self):
@@ -91,7 +96,7 @@ class Turtlebot3GazeboEnv(gym.Env):
 
     # state (dict) to observation (np array)
     def state_to_obs(self):
-        return np.concatenate([self.state["agent"], self.state["target"], self.state["info"]])
+        return np.concatenate([self.state["agent"], self.state["target"], self.state["info"]], dtype=np.float64)
 
     # return updated (recomputed) info
     def get_info(self):
@@ -107,11 +112,21 @@ class Turtlebot3GazeboEnv(gym.Env):
     def similarity_to_goal(self):
         va = self.state["agent"][:2]
         vt = self.state["target"]
+        if np.allclose(va, np.zeros(2)):
+            rot = self.state["agent"][2]
+            va = np.array([np.cos(rot), np.sin(rot)])
         return np.dot(va, vt) / (np.linalg.norm(va) * np.linalg.norm(vt))
 
     # returns a random 2D vector in (-1, 1) x (-1, 1)
     def random_vector(self):
-        return np.random.rand(2) * 2 - 1
+        rand = np.zeros(2)
+        while np.allclose(rand, np.zeros(2)):
+            rand = np.random.rand(2) * 2 - 1
+        return rand
+
+    # returns agent is in track
+    def is_in_track(self):
+        pass
     
     # find and kill gazebo
     def close(self):
