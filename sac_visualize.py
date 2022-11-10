@@ -15,17 +15,26 @@ if __name__ == '__main__':
         model = SAC("MlpPolicy", env, verbose=1)
         model = SAC.load("sac_turtlebot")
         
-        rewards = []
-        state = env.reset()
         while True:
-            action, _ = model.predict(state, deterministic=True)
-            state, reward, done, _ = env.step(action)
-            print(state, reward, done)
-            rewards.append(reward)
-            if done:
-                state = env.reset()
+            rewards = []
+            state = env.reset()
+            while True:
+                action, _ = model.predict(state, deterministic=True)
+                state, reward, done, _ = env.step(action)
+                print(f"current position: {state[0]:5f}, {state[1]:5f}")
+                print(f"target position: {state[3]:5f}, {state[4]:5f}")
+                print(f"reward: {reward}")
+                print(f"done: {done}")
+                rewards.append(reward)
+                if done:
+                    state = env.reset()
+                    break
+            print(f"total rewards: {rewards}")
+            env.stop()
+            k = int(input("ENTER 1 TO CONTINUE"))
+            if k != 1:
                 break
-        print(rewards)
+        input("WAIT TO CLOSE")
     finally:
         env.close()
 

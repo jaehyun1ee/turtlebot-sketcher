@@ -30,16 +30,16 @@ class Turtlebot3GazeboEnv(gym.Env):
         self.agent = Agent()
 
         # track
-        self.track_width = 0.01
+        self.track_width = 0.05
         self.track_length = 0
         self.track_unit = np.array([0, 0])
         self.track_ortho_unit = np.array([0, 0])
-        self.track_tile_num = 10
+        self.track_tile_num = 100
         self.track_tile_visited = np.array([False for _ in range(self.track_tile_num)])
 
         # initialize environment (MDP definition)
         self.observation_space = spaces.Box(low=np.array([-1, -1, -np.pi, -1, -1, 0, -1]), high=np.array([1, 1, np.pi, 1, 1, 4, 1]), shape=(7,), dtype=np.float64) # (x_agent, y_agent, rot_agent, x_goal, y_goal, dist_to_goal, similarity_to_goal)
-        self.action_space = spaces.Box(low=np.array([0, -1.5]), high=np.array([1.5, 1.5]), shape=(2,), dtype=np.float32) # linear-x, and angular-z
+        self.action_space = spaces.Box(low=-1, high=1, shape=(1,), dtype=np.float32) # linear-x, and angular-z
         self.state = {
             "agent" : np.array([0, 0, 0]),
             "target" : self.random_vector(),
@@ -55,8 +55,11 @@ class Turtlebot3GazeboEnv(gym.Env):
     def step(self, action):
         # perform action on environment
         cmd = Twist()
-        cmd.linear.x = action[0]
-        cmd.angular.z = action[1]
+        if action <= 0:
+            cmd.angular.z = action * 2 + 1
+        else:
+            cmd.linear.x = action
+ 
         # update state
         self.state["agent"] = self.agent.move(cmd)
         self.state["info"] = self.get_info()
@@ -75,15 +78,15 @@ class Turtlebot3GazeboEnv(gym.Env):
     # reward function
     def compute_reward(self, track_tile_idx):
         # living cost
-        reward = -0.1
+        reward = -5
 
         # out of track
         if track_tile_idx < 0:
-            reward -= 100
+            reward = -100
         # newly visited tile
         elif not self.track_tile_visited[track_tile_idx]:
             self.track_tile_visited[track_tile_idx] = True
-            reward += 1000 / self.track_tile_num
+            reward = 10000 / self.track_tile_num
 
         return reward 
 
@@ -156,10 +159,12 @@ class Turtlebot3GazeboEnv(gym.Env):
         b = np.dot(self.state["agent"][:2], self.track_ortho_unit)
 
         # agent is out of track
-        if not (a >= 0 and a <= self.track_length and b >= -self.track_width and b <= self.track_width):
+        if not (a >= -0.05 and a <= self.track_length and b >= -self.track_width and b <= self.track_width):
             return -1
 
-        return int(a * self.track_tile_num / self.track_length)
+        tile = int(a * self.track_tile_num / self.track_length)
+        if tile < 0: tile = 0
+        return tile
     
     # find and kill gazebo
     def close(self):
