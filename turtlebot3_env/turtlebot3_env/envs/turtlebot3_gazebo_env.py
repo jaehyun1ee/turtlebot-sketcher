@@ -30,12 +30,18 @@ class Turtlebot3GazeboEnv(gym.Env):
         self.agent = Agent()
 
         # initialize environment (MDP definition)
-        self.observation_space = spaces.Box(low=np.array([-1, -1, -np.pi, -1, -1]), high=np.array([1, 1, np.pi, 1, 1]), dtype=np.float64) # (x_agent, y_agent, rot_agent, x_goal, y_goal)
+        self.observation_space = spaces.Box(low=np.array([-1, -1, -np.pi, -1, -1, 0, -np.inf]), high=np.array([1, 1, np.pi, 1, 1, 4, np.inf]), dtype=np.float64) # (x_agent, y_agent, rot_agent, x_goal, y_goal, dist_to_goal, similarity_to_goal) TODO what is the min/max of cosine similarity?
         self.action_space = spaces.Box(low=np.array([-1.5, -1.5]), high=np.array([1.5, 1.5]), dtype=np.float64) # linear-x, and angular-z
         self.state = {
             "agent" : np.array([0, 0, 0]),
             "target" : self.random_vector(),
+            "info" : np.array([0, 0]), # will be updated below
         } 
+        self.state["info"] = self.get_info()
+
+    """
+    MDP Logic
+    """
 
     # perform one step in an episode
     def step(self, action):
@@ -45,6 +51,7 @@ class Turtlebot3GazeboEnv(gym.Env):
         cmd.angular.z = action[1]
         # update state
         self.state["agent"] = self.agent.move(cmd)
+        self.state["info"] = self.get_info()
 
         # compute reward
         reward = self.compute_reward()
@@ -56,8 +63,8 @@ class Turtlebot3GazeboEnv(gym.Env):
     
     # reward function
     def compute_reward(self):
-        dist = self.dist_to_goal() # distance to goal
-        cos_similarity = np.dot(self.state["agent"][:2], self.state["target"]) / (np.linalg.norm(self.state["agent"][:2]) * np.linalg.norm(self.state["target"])) # cosine similarity
+        dist = self.state["info"][0] # distance to goal
+        cos_similarity = self.state["info"][1] # cosine similarity
         return (-10 * dist) + (5 * cos_similarity) 
 
     # returns true if the episode is done
@@ -69,22 +76,38 @@ class Turtlebot3GazeboEnv(gym.Env):
     def reset(self):
         self.state["agent"] = self.agent.reset()
         self.state["target"] = self.random_vector()
+        self.state["info"] = self.get_info()
 
         return self.state_to_obs(), {}
 
     # stop the agent
     def stop(self):
         self.state["agent"] = self.agent.move(Twist())
+        self.state["info"] = self.get_info()
+
+    """
+    HELPER FUNCTIONS
+    """
 
     # state (dict) to observation (np array)
     def state_to_obs(self):
-        return np.concatenate([self.state["agent"], self.state["target"]])
+        return np.concatenate([self.state["agent"], self.state["target"], self.state["info"]])
+
+    # return updated (recomputed) info
+    def get_info(self):
+        return [ self.dist_to_goal(), self.similarity_to_goal() ]
  
     # returns the distance between the current agent and the goal
     def dist_to_goal(self):
         dx = self.state["target"][0] - self.state["agent"][0]
         dy = self.state["target"][1] - self.state["agent"][1]
         return sqrt(dx ** 2 + dy ** 2)
+    
+    # returns the cosine similarity between the current agent and the goal
+    def similarity_to_goal(self):
+        va = self.state["agent"][:2]
+        vt = self.state["target"]
+        return np.dot(va, vt) / (np.linalg.norm(va) * np.linalg.norm(vt))
 
     # returns a random 2D vector in (-1, 1) x (-1, 1)
     def random_vector(self):
