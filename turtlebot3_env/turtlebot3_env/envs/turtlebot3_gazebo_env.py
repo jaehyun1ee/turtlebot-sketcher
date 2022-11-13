@@ -29,6 +29,10 @@ class Turtlebot3GazeboEnv(gym.Env):
         # initialize agent
         self.agent = Agent()
 
+        # grid
+        self.grid_num = 100
+        self.grid = np.zeros((3, self.grid_num, self.grid_num))
+
         # track
         self.track_width = 0.05
         self.track_length = 0
@@ -36,7 +40,7 @@ class Turtlebot3GazeboEnv(gym.Env):
         self.track_ortho_unit = np.array([0, 0])
         self.track_tile_num = 100
         self.track_tile_visited = np.array([False for _ in range(self.track_tile_num)])
-
+ 
         # initialize environment (MDP definition)
         self.observation_space = spaces.Box(low=np.array([-1, -1, -np.pi, -1, -1, 0, -1]), high=np.array([1, 1, np.pi, 1, 1, 4, 1]), shape=(7,), dtype=np.float64) # (x_agent, y_agent, rot_agent, x_goal, y_goal, dist_to_goal, similarity_to_goal)
         self.action_space = spaces.Box(low=-1, high=1, shape=(1,), dtype=np.float32) # linear-x, and angular-z
@@ -63,9 +67,10 @@ class Turtlebot3GazeboEnv(gym.Env):
         # update state
         self.state["agent"] = self.agent.move(cmd)
         self.state["info"] = self.get_info()
+        self.encode_agent()
 
         # compute tile index
-        track_tile_idx = self.get_track_tile()
+        track_tile_idx = self.get_track_tile(self.state["agent"][:2])
         
         # compute reward
         reward = self.compute_reward(track_tile_idx)
@@ -103,6 +108,9 @@ class Turtlebot3GazeboEnv(gym.Env):
         self.state["target"] = self.random_vector()
         self.state["info"] = self.get_info()
         self.set_track()
+        self.encode_track()
+        self.encode_agent()
+        self.encode_target()
 
         return self.state_to_obs()
 
@@ -122,6 +130,49 @@ class Turtlebot3GazeboEnv(gym.Env):
     # return updated (recomputed) info
     def get_info(self):
         return [ self.dist_to_goal(), self.similarity_to_goal() ]
+
+    # encode the track into a grid
+    def encode_track(self):
+        for grid_x in range(self.grid_num):
+            for grid_y in range(self.grid_num):
+                point = self.grid_to_point([grid_x, grid_y])
+                self.grid[0][grid_x][grid_y] = 0 if self.get_track_tile(point) < 0 else 1
+
+    # encode the agent into a grid
+    def encode_agent(self):
+        # reinitialize grid for agent
+        self.grid[1] = np.zeros((self.grid_num, self.grid_num))
+        
+        # get agent's grid
+        agent_grid_idx = self.point_to_grid(self.state["agent"][:2])
+        agent_grid_x = agent_grid_idx[0]
+        agent_grid_y = agent_grid_idx[1]
+
+        self.grid[1][agent_grid_x][agent_grid_y] = 1
+
+    # encode the target into a grid
+    def encode_target(self):
+        # reinitialize grid for target 
+        self.grid[2] = np.zeros((self.grid_num, self.grid_num))
+        
+        # get agent's grid
+        target_grid_idx = self.point_to_grid(self.state["target"])
+        target_grid_x = target_grid_idx[0]
+        target_grid_y = target_grid_idx[1]
+
+        self.grid[2][target_grid_x][target_grid_y] = 1
+
+    # convert a point to a grid index
+    def point_to_grid(self, point):
+        grid_x = int((point[0] + 1) / 2 * 100)
+        grid_y = int((point[1] + 1) / 2 * 100)
+        return np.array([ grid_x, grid_y ])
+
+    # convert a grid index to a representative point
+    def grid_to_point(self, grid_idx):
+        point_x = -1 + 1 / self.grid_num + 2 / self.grid_num * grid_idx[0]
+        point_y = -1 + 1 / self.grid_num + 2 / self.grid_num * grid_idx[1]
+        return np.array([ point_x, point_y ])
 
     # returns the distance between the current agent and the goal
     def dist_to_goal(self):
@@ -144,22 +195,22 @@ class Turtlebot3GazeboEnv(gym.Env):
         while np.allclose(rand, np.zeros(2)):
             rand = np.random.rand(2) * 2 - 1
         return rand
-
-    # 
+ 
+    # set up a track
     def set_track(self):
         self.track_length = np.linalg.norm(self.state["target"])
         self.track_unit = self.state["target"] / self.track_length
         self.track_ortho_unit = np.array([ -self.track_unit[1], self.track_unit[0] ])
         self.track_tile_visited = np.array([False for _ in range(self.track_tile_num)])
 
-    # returns the tile number where the agent is located at, and returns -1 if out of track
-    def get_track_tile(self):
+    # returns the tile number of a point, and returns -1 if out of track
+    def get_track_tile(self, point):
         # project agent's position into track
-        a = np.dot(self.state["agent"][:2], self.track_unit)
-        b = np.dot(self.state["agent"][:2], self.track_ortho_unit)
+        a = np.dot(point, self.track_unit)
+        b = np.dot(point, self.track_ortho_unit)
 
         # agent is out of track
-        if not (a >= -0.05 and a <= self.track_length and b >= -self.track_width and b <= self.track_width):
+        if not (a >= -0.05 and a <= self.track_length + 0.05 and b >= -self.track_width and b <= self.track_width):
             return -1
 
         tile = int(a * self.track_tile_num / self.track_length)
