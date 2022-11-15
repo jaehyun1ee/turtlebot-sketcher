@@ -12,8 +12,8 @@ if __name__ == '__main__':
     env = gym.make('turtlebot3_env/Turtlebot3-v0')
 
     try:
-        model = SAC("CnnPolicy", env, verbose=1, buffer_size=10000)
-        model.learn(total_timesteps=100000, log_interval=100)
+        model = SAC("CnnPolicy", env, verbose=1, buffer_size=10000, learning_starts=10000)
+        model.learn(total_timesteps=120000, log_interval=100)
         print("training complete")
         model.save("sac_turtlebot")
     finally:

@@ -44,7 +44,7 @@ class Turtlebot3GazeboEnv(gym.Env):
  
         # initialize environment (MDP definition)
         self.observation_space = spaces.Box(low=0, high=255, shape=(3,100,100), dtype=np.uint8) # (x_agent, y_agent, rot_agent, x_goal, y_goal, dist_to_goal, similarity_to_goal)
-        self.action_space = spaces.Box(low=np.array([-1, -1]), high=np.array([1, 1]), shape=(2,), dtype=np.float32) # linear-x, and angular-z
+        self.action_space = spaces.Box(low=np.array([-0.5, -np.pi]), high=np.array([0.5, np.pi]), shape=(2,), dtype=np.float32) # linear-x, and angular-z
         self.state = {
             "agent" : np.array([0, 0, 0]),
             "target" : self.random_vector(),
@@ -108,10 +108,11 @@ class Turtlebot3GazeboEnv(gym.Env):
 
     # reset the environment
     def reset(self):
-        print(f"steps: {self.count}, move: {self.agent.count}, track: {sum(self.track_tile_visited)}")
+        #print(f"steps: {self.count}, move: {self.agent.count}, track: {sum(self.track_tile_visited)}")
         self.count = 0
         self.state["agent"] = self.agent.reset()
-        self.state["target"] = self.random_vector()
+        #self.state["target"] = self.random_vector()
+        self.state["target"] = np.array([0.5, 0.5])
         self.state["info"] = self.get_info()
         self.set_track()
         self.encode_track()
@@ -261,7 +262,7 @@ class Agent():
     def move(self, cmd):
         self.count += 1
         self.cmd_vel.publish(cmd)
-        time.sleep(0.2)
+        time.sleep(0.1)
         self.cmd_vel.publish(Twist())
 
         return self.get_state()
@@ -271,7 +272,8 @@ class Agent():
         self.count = 0
         cmd = ModelState()
         cmd.model_name = self.model_name
-        orientation = quaternion_from_euler(0, 0, np.random.rand() * np.pi * 2 - np.pi)
+        #orientation = quaternion_from_euler(0, 0, np.random.rand() * np.pi * 2 - np.pi)
+        orientation = quaternion_from_euler(0, 0, np.deg2rad(180))
         cmd.pose.orientation.x = orientation[0]
         cmd.pose.orientation.y = orientation[1]
         cmd.pose.orientation.z = orientation[2]
