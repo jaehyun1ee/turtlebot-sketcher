@@ -1,6 +1,7 @@
 import sys
 import os
 import subprocess
+import time
 from math import radians, copysign, sqrt, pow, pi, atan2
 import numpy as np
 
@@ -29,21 +30,9 @@ class Turtlebot3GazeboEnv(gym.Env):
         # initialize agent
         self.agent = Agent()
 
-        # grid
-        self.grid_num = 100
-        self.grid = np.zeros((3, self.grid_num, self.grid_num))
-
-        # track
-        self.track_width = 0.05
-        self.track_length = 0
-        self.track_unit = np.array([0, 0])
-        self.track_ortho_unit = np.array([0, 0])
-        self.track_tile_num = 100
-        self.track_tile_visited = np.array([False for _ in range(self.track_tile_num)])
- 
         # initialize environment (MDP definition)
-        self.observation_space = spaces.Box(low=np.array([-1, -1, -np.pi, -1, -1, 0, -1]), high=np.array([1, 1, np.pi, 1, 1, 4, 1]), shape=(7,), dtype=np.float64) # (x_agent, y_agent, rot_agent, x_goal, y_goal, dist_to_goal, similarity_to_goal)
-        self.action_space = spaces.Box(low=-1, high=1, shape=(1,), dtype=np.float32) # linear-x, and angular-z
+        self.observation_space = spaces.Box(low=np.array([-1, -1, -np.pi]), high=np.array([1, 1, np.pi]), shape=(3,), dtype=np.float64) # (x_agent, y_agent, rot_agent, x_goal, y_goal, dist_to_goal, similarity_to_goal)
+        self.action_space = spaces.Box(low=np.array([-np.pi, -2*sqrt(2)]), high=np.array([np.pi, 2*sqrt(2)]), shape=(2,), dtype=np.float32) # linear-x, and angular-z
         self.state = {
             "agent" : np.array([0, 0, 0]),
             "target" : self.random_vector(),
@@ -58,54 +47,26 @@ class Turtlebot3GazeboEnv(gym.Env):
     # perform one step in an episode
     def step(self, action):
         # perform action on environment
-        cmd = Twist()
-        if action <= 0:
-            cmd.angular.z = action * 2 + 1
-        else:
-            cmd.linear.x = action
- 
         # update state
-        self.state["agent"] = self.agent.move(cmd)
+        self.state["agent"] = self.agent.move(action)
         self.state["info"] = self.get_info()
-        self.encode_agent()
+        self.agent.move([0, 0])  
 
-        # compute tile index
-        track_tile_idx = self.get_track_tile(self.state["agent"][:2])
-        
         # compute reward
-        reward = self.compute_reward(track_tile_idx)
+        reward = self.compute_reward()
+        print(f"distance: {self.dist_to_goal()}")
 
-        # query if the episode is done
-        done = self.is_done(track_tile_idx)
-
-        return self.state_to_obs(), reward, done, {}
+        return self.state_to_obs(), reward, True, {}
     
     # reward function
-    def compute_reward(self, track_tile_idx):
-        # living cost
-        reward = -5
-
-        # out of track
-        if track_tile_idx < 0:
-            reward = -100
-        # newly visited tile
-        elif not self.track_tile_visited[track_tile_idx]:
-            self.track_tile_visited[track_tile_idx] = True
-            reward = 10000 / self.track_tile_num
-
-        return reward 
-
-    # returns true if the episode is done
-    def is_done(self, track_tile_idx):
-        if track_tile_idx < 0:
-            return True
-        d = self.dist_to_goal()
-        return d < 0.01
+    def compute_reward(self):
+        return -10 * self.dist_to_goal() + 5 * self.similarity_to_goal()
 
     # reset the environment
     def reset(self):
         self.state["agent"] = self.agent.reset()
-        self.state["target"] = self.random_vector()
+        #self.state["target"] = self.random_vector()
+        self.state["target"] = np.array([0.5, 0.5])
         self.state["info"] = self.get_info()
         self.set_track()
         self.encode_track()
@@ -116,7 +77,6 @@ class Turtlebot3GazeboEnv(gym.Env):
 
     # stop the agent
     def stop(self):
-        self.state["agent"] = self.agent.move(Twist())
         self.state["info"] = self.get_info()
 
     """
@@ -125,54 +85,11 @@ class Turtlebot3GazeboEnv(gym.Env):
 
     # state (dict) to observation (np array)
     def state_to_obs(self):
-        return np.concatenate([self.state["agent"], self.state["target"], self.state["info"]], dtype=np.float64)
+        return self.state["agent"]
 
     # return updated (recomputed) info
     def get_info(self):
         return [ self.dist_to_goal(), self.similarity_to_goal() ]
-
-    # encode the track into a grid
-    def encode_track(self):
-        for grid_x in range(self.grid_num):
-            for grid_y in range(self.grid_num):
-                point = self.grid_to_point([grid_x, grid_y])
-                self.grid[0][grid_x][grid_y] = 0 if self.get_track_tile(point) < 0 else 1
-
-    # encode the agent into a grid
-    def encode_agent(self):
-        # reinitialize grid for agent
-        self.grid[1] = np.zeros((self.grid_num, self.grid_num))
-        
-        # get agent's grid
-        agent_grid_idx = self.point_to_grid(self.state["agent"][:2])
-        agent_grid_x = agent_grid_idx[0]
-        agent_grid_y = agent_grid_idx[1]
-
-        self.grid[1][agent_grid_x][agent_grid_y] = 1
-
-    # encode the target into a grid
-    def encode_target(self):
-        # reinitialize grid for target 
-        self.grid[2] = np.zeros((self.grid_num, self.grid_num))
-        
-        # get agent's grid
-        target_grid_idx = self.point_to_grid(self.state["target"])
-        target_grid_x = target_grid_idx[0]
-        target_grid_y = target_grid_idx[1]
-
-        self.grid[2][target_grid_x][target_grid_y] = 1
-
-    # convert a point to a grid index
-    def point_to_grid(self, point):
-        grid_x = int((point[0] + 1) / 2 * 100)
-        grid_y = int((point[1] + 1) / 2 * 100)
-        return np.array([ grid_x, grid_y ])
-
-    # convert a grid index to a representative point
-    def grid_to_point(self, grid_idx):
-        point_x = -1 + 1 / self.grid_num + 2 / self.grid_num * grid_idx[0]
-        point_y = -1 + 1 / self.grid_num + 2 / self.grid_num * grid_idx[1]
-        return np.array([ point_x, point_y ])
 
     # returns the distance between the current agent and the goal
     def dist_to_goal(self):
@@ -196,27 +113,6 @@ class Turtlebot3GazeboEnv(gym.Env):
             rand = np.random.rand(2) * 2 - 1
         return rand
  
-    # set up a track
-    def set_track(self):
-        self.track_length = np.linalg.norm(self.state["target"])
-        self.track_unit = self.state["target"] / self.track_length
-        self.track_ortho_unit = np.array([ -self.track_unit[1], self.track_unit[0] ])
-        self.track_tile_visited = np.array([False for _ in range(self.track_tile_num)])
-
-    # returns the tile number of a point, and returns -1 if out of track
-    def get_track_tile(self, point):
-        # project agent's position into track
-        a = np.dot(point, self.track_unit)
-        b = np.dot(point, self.track_ortho_unit)
-
-        # agent is out of track
-        if not (a >= -0.05 and a <= self.track_length + 0.05 and b >= -self.track_width and b <= self.track_width):
-            return -1
-
-        tile = int(a * self.track_tile_num / self.track_length)
-        if tile < 0: tile = 0
-        return tile
-    
     # find and kill gazebo
     def close(self):
          # find gzclient and gzserver 
@@ -250,9 +146,19 @@ class Agent():
         self.model_name = "turtlebot3_burger"
 
     # issue a move command to the turtlebot and returns its updated position
-    def move(self, cmd):
-        self.cmd_vel.publish(cmd)
-        self.rate.sleep()
+    def move(self, action):
+        cmd_turn = Twist()
+        cmd_turn.angular.z = 1 if action[0] > 0 else -1
+        self.cmd_vel.publish(cmd_turn)
+        time.sleep(abs(action[0]))
+        self.cmd_vel.publish(Twist())
+
+        cmd_move = Twist()
+        cmd_move.linear.x = 0.5 if action[0] > 0 else -0.5
+        self.cmd_vel.publish(cmd_move)
+        time.sleep(abs(action[1]))
+        self.cmd_vel.publish(Twist())
+
 
         return self.get_state()
 
@@ -260,7 +166,8 @@ class Agent():
     def reset(self):
         cmd = ModelState()
         cmd.model_name = self.model_name
-        orientation = quaternion_from_euler(0, 0, np.random.rand() * np.pi * 2 - np.pi)
+        #orientation = quaternion_from_euler(0, 0, np.random.rand() * np.pi * 2 - np.pi)
+        orientation = quaternion_from_euler(0, 0, np.pi)
         cmd.pose.orientation.x = orientation[0]
         cmd.pose.orientation.y = orientation[1]
         cmd.pose.orientation.z = orientation[2]

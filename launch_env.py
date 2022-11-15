@@ -16,17 +16,17 @@ if __name__ == '__main__':
             done = False
             its = 0
             while not done:
-                action = -0.7
+                action = env.action_space.sample()
                 next_state, reward, done, _ = env.step(action)
                 print(f"it ({its});\nstate : {next_state}\naction : {action}\nreward : {reward}")
-                plt.imshow(np.transpose(env.grid, (1, 2, 0)))
-                plt.show()
-                plt.savefig('/grid.png')
-                input("PLT SAVED")
+                #plt.imshow(np.transpose(env.grid, (1, 2, 0)))
+                #plt.show()
+                #plt.savefig('/grid.png')
+                #input("PLT SAVED")
 
-                its += 1
-                if (its == 200):
-                    break
+                #its += 1
+                #if (its == 200):
+                   # break
             env.stop()
             print(f"final : {env.state}")
 
