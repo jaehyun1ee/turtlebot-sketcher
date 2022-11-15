@@ -13,7 +13,7 @@ if __name__ == '__main__':
 
     try:
         model = SAC("MlpPolicy", env, verbose=1)
-        model.learn(total_timesteps=10000, log_interval=100)
+        model.learn(total_timesteps=100000, log_interval=100)
         print("training complete")
         model.save("sac_turtlebot")
     finally:

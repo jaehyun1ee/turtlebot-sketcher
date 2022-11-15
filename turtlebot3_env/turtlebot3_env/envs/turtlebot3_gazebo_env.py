@@ -1,6 +1,7 @@
 import sys
 import os
 import subprocess
+import time
 from math import radians, copysign, sqrt, pow, pi, atan2
 import numpy as np
 
@@ -33,6 +34,12 @@ class Turtlebot3GazeboEnv(gym.Env):
         self.grid_num = 100
         self.grid = np.zeros((3, self.grid_num, self.grid_num))
 
+        # alighment
+        self.align = False
+
+        # step count
+        self.count = 0
+
         # track
         self.track_width = 0.05
         self.track_length = 0
@@ -43,7 +50,7 @@ class Turtlebot3GazeboEnv(gym.Env):
  
         # initialize environment (MDP definition)
         self.observation_space = spaces.Box(low=np.array([-1, -1, -np.pi, -1, -1, 0, -1]), high=np.array([1, 1, np.pi, 1, 1, 4, 1]), shape=(7,), dtype=np.float64) # (x_agent, y_agent, rot_agent, x_goal, y_goal, dist_to_goal, similarity_to_goal)
-        self.action_space = spaces.Box(low=-1, high=1, shape=(1,), dtype=np.float32) # linear-x, and angular-z
+        self.action_space = spaces.Box(low=np.array([-1, -1]), high=np.array([1, 1]), shape=(2,), dtype=np.float32) # linear-x, and angular-z
         self.state = {
             "agent" : np.array([0, 0, 0]),
             "target" : self.random_vector(),
@@ -59,10 +66,8 @@ class Turtlebot3GazeboEnv(gym.Env):
     def step(self, action):
         # perform action on environment
         cmd = Twist()
-        if action <= 0:
-            cmd.angular.z = action * 2 + 1
-        else:
-            cmd.linear.x = action
+        cmd.linear.x = action[0]
+        cmd.angular.z = action[1]
  
         # update state
         self.state["agent"] = self.agent.move(cmd)
@@ -71,27 +76,36 @@ class Turtlebot3GazeboEnv(gym.Env):
 
         # compute tile index
         track_tile_idx = self.get_track_tile(self.state["agent"][:2])
-        
+
+        self.count += 1
+      
         # compute reward
         reward = self.compute_reward(track_tile_idx)
 
         # query if the episode is done
         done = self.is_done(track_tile_idx)
-
+ 
         return self.state_to_obs(), reward, done, {}
     
     # reward function
     def compute_reward(self, track_tile_idx):
         # living cost
-        reward = -5
+        reward = -100 * self.count
+
+        # alignment check
+        if (not self.align) and (self.similarity_to_goal() > 0.95 or self.similarity_to_goal() < -0.95):
+            self.align = True
+            reward += 100000
 
         # out of track
         if track_tile_idx < 0:
-            reward = -100
+            reward += -1000
         # newly visited tile
         elif not self.track_tile_visited[track_tile_idx]:
-            self.track_tile_visited[track_tile_idx] = True
-            reward = 10000 / self.track_tile_num
+            for i in range(track_tile_idx + 1):
+                if not self.track_tile_visited[i]:
+                    self.track_tile_visited[i] = True
+                    reward += 100000 / self.track_tile_num
 
         return reward 
 
@@ -100,10 +114,17 @@ class Turtlebot3GazeboEnv(gym.Env):
         if track_tile_idx < 0:
             return True
         d = self.dist_to_goal()
+        if d < 0.01:
+            print("GOAL REACHED")
         return d < 0.01
 
     # reset the environment
     def reset(self):
+        tcount = sum(self.track_tile_visited)
+        #print("TILES = " + str(tcount))
+        
+        self.count = 0
+        self.align = False
         self.state["agent"] = self.agent.reset()
         self.state["target"] = self.random_vector()
         self.state["info"] = self.get_info()
@@ -165,7 +186,11 @@ class Turtlebot3GazeboEnv(gym.Env):
     # convert a point to a grid index
     def point_to_grid(self, point):
         grid_x = int((point[0] + 1) / 2 * 100)
+        if grid_x >= 100:
+            grid_x = 99
         grid_y = int((point[1] + 1) / 2 * 100)
+        if grid_y >= 100:
+            grid_y = 99
         return np.array([ grid_x, grid_y ])
 
     # convert a grid index to a representative point
@@ -214,6 +239,8 @@ class Turtlebot3GazeboEnv(gym.Env):
             return -1
 
         tile = int(a * self.track_tile_num / self.track_length)
+        if tile >= 100:
+            tile = 99
         if tile < 0: tile = 0
         return tile
     
@@ -252,7 +279,8 @@ class Agent():
     # issue a move command to the turtlebot and returns its updated position
     def move(self, cmd):
         self.cmd_vel.publish(cmd)
-        self.rate.sleep()
+        time.sleep(0.05)
+        self.cmd_vel.publish(Twist())
 
         return self.get_state()
 
