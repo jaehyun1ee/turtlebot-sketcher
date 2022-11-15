@@ -32,7 +32,7 @@ class Turtlebot3GazeboEnv(gym.Env):
 
         # initialize environment (MDP definition)
         self.observation_space = spaces.Box(low=np.array([-1, -1, -np.pi]), high=np.array([1, 1, np.pi]), shape=(3,), dtype=np.float64) # (x_agent, y_agent, rot_agent, x_goal, y_goal, dist_to_goal, similarity_to_goal)
-        self.action_space = spaces.Box(low=np.array([-np.pi, -2*sqrt(2)]), high=np.array([np.pi, 2*sqrt(2)]), shape=(2,), dtype=np.float32) # linear-x, and angular-z
+        self.action_space = spaces.Box(low=np.array([-np.pi, -2]), high=np.array([np.pi, 2]), shape=(2,), dtype=np.float32) # linear-x, and angular-z
         self.state = {
             "agent" : np.array([0, 0, 0]),
             "target" : self.random_vector(),
@@ -54,24 +54,23 @@ class Turtlebot3GazeboEnv(gym.Env):
 
         # compute reward
         reward = self.compute_reward()
-        print(f"distance: {self.dist_to_goal()}")
+        """
+        target = self.state["target"]
+        agent = self.state["agent"]
+        print(f"distance : {self.dist_to_goal()}\tgoal : {target}\tagent : {agent}")
+        """
 
         return self.state_to_obs(), reward, True, {}
     
     # reward function
     def compute_reward(self):
-        return -10 * self.dist_to_goal() + 5 * self.similarity_to_goal()
+        return -3 * self.dist_to_goal() + abs(self.similarity_to_goal())
 
     # reset the environment
     def reset(self):
         self.state["agent"] = self.agent.reset()
-        #self.state["target"] = self.random_vector()
-        self.state["target"] = np.array([0.5, 0.5])
+        self.state["target"] = self.random_vector()
         self.state["info"] = self.get_info()
-        self.set_track()
-        self.encode_track()
-        self.encode_agent()
-        self.encode_target()
 
         return self.state_to_obs()
 
@@ -106,10 +105,10 @@ class Turtlebot3GazeboEnv(gym.Env):
             va = np.array([np.cos(rot), np.sin(rot)])
         return np.dot(va, vt) / (np.linalg.norm(va) * np.linalg.norm(vt))
 
-    # returns a random 2D vector in (-1, 1) x (-1, 1)
+    # returns a random 2D vector in a circle with radius 0
     def random_vector(self):
         rand = np.zeros(2)
-        while np.allclose(rand, np.zeros(2)):
+        while np.allclose(rand, np.zeros(2)) or np.linalg.norm(rand) > 1:
             rand = np.random.rand(2) * 2 - 1
         return rand
  
@@ -142,23 +141,22 @@ class Agent():
         self.set_model_state = rospy.ServiceProxy('/gazebo/set_model_state', SetModelState)
 
         # initialize
-        self.rate = rospy.Rate(10)
         self.model_name = "turtlebot3_burger"
+        self.orientations = np.array([i * np.pi / 4 for i in range(8)])
 
     # issue a move command to the turtlebot and returns its updated position
     def move(self, action):
         cmd_turn = Twist()
         cmd_turn.angular.z = 1 if action[0] > 0 else -1
         self.cmd_vel.publish(cmd_turn)
-        time.sleep(abs(action[0]))
+        rospy.sleep(abs(action[0]))
         self.cmd_vel.publish(Twist())
 
         cmd_move = Twist()
         cmd_move.linear.x = 0.5 if action[0] > 0 else -0.5
         self.cmd_vel.publish(cmd_move)
-        time.sleep(abs(action[1]))
+        rospy.sleep(abs(action[1]))
         self.cmd_vel.publish(Twist())
-
 
         return self.get_state()
 
@@ -166,8 +164,7 @@ class Agent():
     def reset(self):
         cmd = ModelState()
         cmd.model_name = self.model_name
-        #orientation = quaternion_from_euler(0, 0, np.random.rand() * np.pi * 2 - np.pi)
-        orientation = quaternion_from_euler(0, 0, np.pi)
+        orientation = quaternion_from_euler(0, 0, np.random.choice(self.orientations))
         cmd.pose.orientation.x = orientation[0]
         cmd.pose.orientation.y = orientation[1]
         cmd.pose.orientation.z = orientation[2]
