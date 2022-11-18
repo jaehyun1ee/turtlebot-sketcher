@@ -2,7 +2,7 @@ import sys
 import os
 import subprocess
 import time
-from math import radians, copysign, sqrt, pow, pi, atan2
+from math import radians, copysign, sqrt, pow, pi, atan2, fabs, modf
 import numpy as np
 
 import gym
@@ -28,17 +28,22 @@ class Turtlebot3GazeboEnv(gym.Env):
         print ("Gazebo launched!")
 
         # initialize agent
-        self.agent = Agent()
+        self.agent = Agent(5) 
 
         # initialize environment (MDP definition)
-        self.observation_space = spaces.Box(low=np.array([-1, -1, -np.pi]), high=np.array([1, 1, np.pi]), shape=(3,), dtype=np.float64) # (x_agent, y_agent, rot_agent, x_goal, y_goal, dist_to_goal, similarity_to_goal)
-        self.action_space = spaces.Box(low=np.array([-np.pi, -2]), high=np.array([np.pi, 2]), shape=(2,), dtype=np.float32) # linear-x, and angular-z
+        self.observation_space = spaces.Box(low=np.array([-1, -1, -np.pi, -1, -1, -np.pi]), high=np.array([1, 1, np.pi, 1, 1, np.pi]), shape=(6,), dtype=np.float64) # (x_agent, y_agent, rot_agent, x_goal, y_goal, dist_to_goal, similarity_to_goal)
+        #self.action_space = spaces.MultiDiscrete(np.array([ 5, 5 ])) # rotate and forward      
+        self.action_space = spaces.Discrete(5) # rotate and forward      
         self.state = {
-            "agent" : np.array([0, 0, 0]),
-            "target" : self.random_vector(),
+            "agent" : np.array([0, 0, 0]), # agent_x, agent_y, agent_rot
+            "target" : np.array([0, 0, 0]), # target_x, target_y, target_rot
             "info" : np.array([0, 0]), # will be updated below
         } 
+        self.state["target"] = self.random_vector()
         self.state["info"] = self.get_info()
+
+        # initialize variables
+        self.dist_init = self.dist_to_goal()
 
     """
     MDP Logic
@@ -46,31 +51,66 @@ class Turtlebot3GazeboEnv(gym.Env):
 
     # perform one step in an episode
     def step(self, action):
-        # perform action on environment
-        # update state
+        # perform action on environment and update state
         self.state["agent"] = self.agent.move(action)
         self.state["info"] = self.get_info()
-        self.agent.move([0, 0])  
+
+        # query if done
+        done = self.is_done()
 
         # compute reward
-        reward = self.compute_reward()
-        """
-        target = self.state["target"]
-        agent = self.state["agent"]
-        print(f"distance : {self.dist_to_goal()}\tgoal : {target}\tagent : {agent}")
-        """
+        reward = self.compute_reward(action, done)
 
-        return self.state_to_obs(), reward, True, {}
+        return self.state_to_obs(), reward, done, {}
+
+    # done function
+    def is_done(self):
+        # reached goal
+        if self.dist_to_goal() < 0.1:
+            print("GOAL")
+            return True
+
+        # out of canvas
+        if self.state["agent"][0] > 1 or self.state["agent"][0] < -1 or self.state["agent"][1] > 1 or self.state["agent"][1] < -1:
+            return True
+        
+        return False
     
     # reward function
-    def compute_reward(self):
-        return -3 * self.dist_to_goal() + abs(self.similarity_to_goal())
+    def compute_reward(self, action, done):
+        rot_diff = self.state["target"][2] - self.state["agent"][2]
+        if rot_diff > np.pi:
+            rot_diff -= 2 * np.pi
+        elif rot_diff < -np.pi:
+            rot_diff += 2 * np.pi
+        rot_diff = round(rot_diff, 2)
+        rot_reward = []
+        for i in range(5):
+            angle = -np.pi / 4 + rot_diff + (np.pi / 8 * i) + np.pi / 2
+            tr = 1 - 4 * fabs(0.5 - modf(0.25 + 0.5 * angle % (2 * np.pi) / np.pi)[0])
+            rot_reward.append(tr)
+
+        dist_current = self.dist_to_goal()
+        dist_reward = 2 ** (dist_current / self.dist_init)
+
+        reward = round(rot_reward[action] * 5, 2) * dist_reward
+
+        if done:
+            reward = -200
+            self.agent.stop()
+
+        if done and dist_current < 0.1:
+            reward = 200
+            self.agent.stop()
+
+        return reward
 
     # reset the environment
     def reset(self):
         self.state["agent"] = self.agent.reset()
         self.state["target"] = self.random_vector()
         self.state["info"] = self.get_info()
+        self.dist_init = self.dist_to_goal()
 
         return self.state_to_obs()
 
@@ -84,7 +124,7 @@ class Turtlebot3GazeboEnv(gym.Env):
 
     # state (dict) to observation (np array)
     def state_to_obs(self):
-        return self.state["agent"]
+        return np.concatenate((self.state["agent"], self.state["target"]))
 
     # return updated (recomputed) info
     def get_info(self):
@@ -99,7 +139,7 @@ class Turtlebot3GazeboEnv(gym.Env):
     # returns the cosine similarity between the current agent and the goal
     def similarity_to_goal(self):
         va = self.state["agent"][:2]
-        vt = self.state["target"]
+        vt = self.state["target"][:2]
         if np.allclose(va, np.zeros(2)):
             rot = self.state["agent"][2]
             va = np.array([np.cos(rot), np.sin(rot)])
@@ -107,10 +147,11 @@ class Turtlebot3GazeboEnv(gym.Env):
 
     # returns a random 2D vector in a circle with radius 0
     def random_vector(self):
-        rand = np.zeros(2)
-        while np.allclose(rand, np.zeros(2)) or np.linalg.norm(rand) > 1:
-            rand = np.random.rand(2) * 2 - 1
-        return rand
+        pos_rand = np.zeros(2)
+        while np.allclose(pos_rand, np.zeros(2)) or np.linalg.norm(pos_rand) > 1:
+            pos_rand = np.random.rand(2) * 2 - 1
+        rot = atan2(pos_rand[1] - self.state["agent"][1], pos_rand[0] - self.state["agent"][0])
+        return np.append(pos_rand, rot)
  
     # find and kill gazebo
     def close(self):
@@ -128,7 +169,7 @@ class Turtlebot3GazeboEnv(gym.Env):
             os.wait()
 
 class Agent():
-    def __init__(self):
+    def __init__(self, n_angular):
         # for issuing command
         self.cmd_vel = rospy.Publisher('cmd_vel', Twist, queue_size=5)
         while self.cmd_vel.get_num_connections() < 1:
@@ -140,25 +181,26 @@ class Agent():
         rospy.wait_for_service('/gazebo/set_model_state')
         self.set_model_state = rospy.ServiceProxy('/gazebo/set_model_state', SetModelState)
 
-        # initialize
+        # initialize parameters
         self.model_name = "turtlebot3_burger"
         self.orientations = np.array([i * np.pi / 4 for i in range(8)])
+        self.n_angular = n_angular
+        self.max_angular_vel = 1.5
 
     # issue a move command to the turtlebot and returns its updated position
     def move(self, action):
-        cmd_turn = Twist()
-        cmd_turn.angular.z = 1 if action[0] > 0 else -1
-        self.cmd_vel.publish(cmd_turn)
-        rospy.sleep(abs(action[0]))
-        self.cmd_vel.publish(Twist())
-
-        cmd_move = Twist()
-        cmd_move.linear.x = 0.5 if action[0] > 0 else -0.5
-        self.cmd_vel.publish(cmd_move)
-        rospy.sleep(abs(action[1]))
-        self.cmd_vel.publish(Twist())
+        cmd = Twist()
+        #cmd.linear.x = ((self.n_linear - 1) / 2 - action[0]) * self.max_linear_vel
+        #cmd.angular.z = ((self.n_angular - 1) / 2 - action[1]) * self.max_angular_vel
+        cmd.linear.x = 0.15  
+        cmd.angular.z = ((self.n_angular - 1) / 2 - action) * self.max_angular_vel
+        self.cmd_vel.publish(cmd)
 
         return self.get_state()
+
+    # stop the agent
+    def stop(self):
+        self.cmd_vel.publish(Twist())
 
     # resets the turtlebot in the origin with a random orientation
     def reset(self):
