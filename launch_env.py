@@ -2,6 +2,7 @@ import gym
 import turtlebot3_env
 import numpy as np
 import matplotlib.pyplot as plt
+from math import sqrt
 
 if __name__ == '__main__':
     # make environment
@@ -19,16 +20,11 @@ if __name__ == '__main__':
                 action = env.action_space.sample()
                 next_state, reward, done, _ = env.step(action)
                 print(f"it ({its});\nstate : {next_state}\naction : {action}\nreward : {reward}")
-                #plt.imshow(np.transpose(env.grid, (1, 2, 0)))
-                #plt.show()
-                #plt.savefig('/grid.png')
-                #input("PLT SAVED")
-
-                #its += 1
-                #if (its == 200):
-                   # break
             env.stop()
             print(f"final : {env.state}")
+            
+            dist = sqrt(next_state[0] ** 2 + next_state[1] ** 2)
+            print(f"action: {abs(action[1]/2):4f}\tdist: {dist:4f}\tdiff: {abs(abs(action[1]/2) - dist):4f}")
 
             # continue or not?
             key = int(input("ENTER 1 TO CONTINUE : "))

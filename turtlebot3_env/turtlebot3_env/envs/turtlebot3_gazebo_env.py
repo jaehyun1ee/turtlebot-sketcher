@@ -31,7 +31,7 @@ class Turtlebot3GazeboEnv(gym.Env):
         self.agent = Agent()
 
         # initialize environment (MDP definition)
-        self.observation_space = spaces.Box(low=np.array([-1, -1, -np.pi]), high=np.array([1, 1, np.pi]), shape=(3,), dtype=np.float64) # (x_agent, y_agent, rot_agent, x_goal, y_goal, dist_to_goal, similarity_to_goal)
+        self.observation_space = spaces.Box(low=np.array([-1, -1, -np.pi, -1, -1, 0, -1]), high=np.array([1, 1, np.pi, 1, 1, sqrt(2), 1]), shape=(7,), dtype=np.float64) # (x_agent, y_agent, rot_agent, x_goal, y_goal, dist_to_goal, similarity_to_goal)
         self.action_space = spaces.Box(low=np.array([-np.pi, -2]), high=np.array([np.pi, 2]), shape=(2,), dtype=np.float32) # linear-x, and angular-z
         self.state = {
             "agent" : np.array([0, 0, 0]),
@@ -84,7 +84,7 @@ class Turtlebot3GazeboEnv(gym.Env):
 
     # state (dict) to observation (np array)
     def state_to_obs(self):
-        return self.state["agent"]
+        return np.concatenate([self.state["agent"], self.state["target"], self.state["info"]])
 
     # return updated (recomputed) info
     def get_info(self):
@@ -155,7 +155,7 @@ class Agent():
         cmd_move = Twist()
         cmd_move.linear.x = 0.5 if action[0] > 0 else -0.5
         self.cmd_vel.publish(cmd_move)
-        rospy.sleep(abs(action[1]))
+        rospy.sleep(abs(action[1])+0.5)
         self.cmd_vel.publish(Twist())
 
         return self.get_state()

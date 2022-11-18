@@ -12,8 +12,7 @@ if __name__ == '__main__':
     env = gym.make('turtlebot3_env/Turtlebot3-v0')
 
     try:
-        model = SAC("MlpPolicy", env, verbose=1)
-        model = SAC.load("sac_turtlebot")
+        model = SAC.load("sac_turtlebot", env=env)
         
         while True:
             rewards = []

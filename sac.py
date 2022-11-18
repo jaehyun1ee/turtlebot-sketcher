@@ -12,8 +12,13 @@ if __name__ == '__main__':
     env = gym.make('turtlebot3_env/Turtlebot3-v0')
 
     try:
-        model = SAC("MlpPolicy", env, verbose=1)
-        model.learn(total_timesteps=10000, log_interval=100)
+        try:
+            model = SAC.load("sac_turtlebot", env=env)
+        except:
+            print("model load has failed")
+            model = SAC("MlpPolicy", env, verbose=1)
+
+        model.learn(total_timesteps=1000, log_interval=100)
         print("training complete")
         model.save("sac_turtlebot")
     finally:
