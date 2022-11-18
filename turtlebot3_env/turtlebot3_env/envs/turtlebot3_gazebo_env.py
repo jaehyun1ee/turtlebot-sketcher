@@ -37,7 +37,7 @@ class Turtlebot3GazeboEnv(gym.Env):
         self.state = {
             "agent" : np.array([0, 0, 0]), # agent_x, agent_y, agent_rot
             "target" : np.array([0, 0, 0]), # target_x, target_y, target_rot
-            "info" : np.array([0, 0]), # will be updated below
+            "info" : np.array([0, 0, 0]), # will be updated below
         } 
         self.state["target"] = self.random_vector()
         self.state["info"] = self.get_info()
@@ -66,7 +66,7 @@ class Turtlebot3GazeboEnv(gym.Env):
     # done function
     def is_done(self):
         # reached goal
-        if self.dist_to_goal() < 0.1:
+        if self.dist_to_goal() < 0.01:
             print("GOAL")
             return True
 
@@ -78,7 +78,7 @@ class Turtlebot3GazeboEnv(gym.Env):
     
     # reward function
     def compute_reward(self, action, done):
-        rot_diff = self.state["target"][2] - self.state["agent"][2]
+        rot_diff = self.state["info"][2] - self.state["agent"][2]
         if rot_diff > np.pi:
             rot_diff -= 2 * np.pi
         elif rot_diff < -np.pi:
@@ -94,6 +94,7 @@ class Turtlebot3GazeboEnv(gym.Env):
         dist_reward = 2 ** (dist_current / self.dist_init)
 
         reward = round(rot_reward[action] * 5, 2) * dist_reward
+        #print(f"dist_reward:{dist_reward:4f}, rot_reward:{rot_reward[action]:4f}, reward:{reward:4f}")
 
         if done:
             reward = -200
@@ -128,7 +129,8 @@ class Turtlebot3GazeboEnv(gym.Env):
 
     # return updated (recomputed) info
     def get_info(self):
-        return [ self.dist_to_goal(), self.similarity_to_goal() ]
+        rot = atan2(self.state["target"][1] - self.state["agent"][1], self.state["target"][0] - self.state["agent"][0])
+        return [ self.dist_to_goal(), self.similarity_to_goal(), rot ]
 
     # returns the distance between the current agent and the goal
     def dist_to_goal(self):
@@ -148,7 +150,7 @@ class Turtlebot3GazeboEnv(gym.Env):
     # returns a random 2D vector in a circle with radius 0
     def random_vector(self):
         pos_rand = np.zeros(2)
-        while np.allclose(pos_rand, np.zeros(2)) or np.linalg.norm(pos_rand) > 1:
+        while np.allclose(pos_rand, np.zeros(2)) or np.linalg.norm(pos_rand) > 1 or np.linalg.norm(pos_rand) < 0.02:
             pos_rand = np.random.rand(2) * 2 - 1
         rot = atan2(pos_rand[1] - self.state["agent"][1], pos_rand[0] - self.state["agent"][0])
         return np.append(pos_rand, rot)

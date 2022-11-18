@@ -13,7 +13,7 @@ if __name__ == '__main__':
 
     try:
         model = DQN("MlpPolicy", env, verbose=1)
-        model.learn(total_timesteps=1000000, log_interval=5)
+        model.learn(total_timesteps=1000000, log_interval=10)
         print("training complete")
         model.save("dqn_turtlebot")
     finally:
