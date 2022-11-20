@@ -60,3 +60,4 @@ build-*/
 *.gch
 sac_turtlebot.zip
 dqn_turtlebot.zip
+model/

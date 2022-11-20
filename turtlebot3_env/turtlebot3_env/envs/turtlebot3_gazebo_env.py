@@ -93,7 +93,7 @@ class Turtlebot3GazeboEnv(gym.Env):
         dist_current = self.dist_to_goal()
         dist_reward = 2 ** (dist_current / self.dist_init)
 
-        reward = round(rot_reward[action] * 5, 2) * dist_reward
+        reward = round(rot_reward[action] * 5, 2) * dist_reward - 5
         #print(f"dist_reward:{dist_reward:4f}, rot_reward:{rot_reward[action]:4f}, reward:{reward:4f}")
 
         if done:
