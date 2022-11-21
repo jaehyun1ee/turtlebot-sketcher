@@ -12,8 +12,15 @@ if __name__ == '__main__':
     env = gym.make('turtlebot3_env/Turtlebot3-v0')
 
     try:
-        model = DQN("MlpPolicy", env, verbose=1)
-        model.learn(total_timesteps=1000000, log_interval=10)
+        try:
+            model = DQN.load("dqn_turtlebot", env=env, tensorboard_log="./logs/")
+            model.set_parameters("dqn_turtlebot")
+            print("model loaded")
+        except:
+            model = DQN("MlpPolicy", env, verbose=1, tensorboard_log="./logs/")
+            print("model load failed")
+        
+        model.learn(total_timesteps=100000, log_interval=10, reset_num_timesteps=False)
         print("training complete")
         model.save("dqn_turtlebot")
     finally:
