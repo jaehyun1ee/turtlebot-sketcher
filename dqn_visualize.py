@@ -28,6 +28,7 @@ if __name__ == '__main__':
                     print(f"target position: {state[3]:5f}, {state[4]:5f}, {state[5]:5f}")
                     print(f"reward: {sum(rewards)}")
                     print(f"done: {done}")
+                    env.show()
                     state = env.reset()
                     break
             env.stop()

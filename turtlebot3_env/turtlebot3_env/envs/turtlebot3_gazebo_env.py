@@ -4,6 +4,7 @@ import subprocess
 import time
 from math import radians, copysign, sqrt, pow, pi, atan2, fabs, modf
 import numpy as np
+import matplotlib.pyplot as plt
 
 import gym
 from gym import spaces
@@ -44,6 +45,7 @@ class Turtlebot3GazeboEnv(gym.Env):
 
         # initialize variables
         self.dist_init = self.dist_to_goal()
+        self.trajectory = [ self.state["agent"][:2] ]
 
     """
     MDP Logic
@@ -54,6 +56,9 @@ class Turtlebot3GazeboEnv(gym.Env):
         # perform action on environment and update state
         self.state["agent"] = self.agent.move(action)
         self.state["info"] = self.get_info()
+
+        # update trajectory
+        self.trajectory.append(self.state["agent"][:2])
 
         # query if done
         done = self.is_done()
@@ -112,12 +117,20 @@ class Turtlebot3GazeboEnv(gym.Env):
         self.state["target"] = self.random_vector()
         self.state["info"] = self.get_info()
         self.dist_init = self.dist_to_goal()
+        self.trajectory = [ self.state["agent"][:2] ]
 
         return self.state_to_obs()
 
     # stop the agent
     def stop(self):
         self.state["info"] = self.get_info()
+
+    # render the trajectory
+    def show(self):
+        plt.scatter(*zip(*self.trajectory))
+        plt.xlim(-1, 1)
+        plt.ylim(-1, 1)
+        plt.show()
 
     """
     HELPER FUNCTIONS

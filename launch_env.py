@@ -21,17 +21,14 @@ if __name__ == '__main__':
                 action = 0
                 next_state, reward, done, _ = env.step(action)
                 print(f"it ({its});\nstate : {next_state}\naction : {action}\nreward : {reward}")
-                #plt.imshow(np.transpose(env.grid, (1, 2, 0)))
-                #plt.show()
-                #plt.savefig('/grid.png')
-                #input("PLT SAVED")
 
                 its += 1
                 if (its == 200):
                     break
                 rewards += reward
                 time.sleep(0.05)
-            env.stop()
+            env.agent.stop()
+            env.show()
             print(f"final : {env.state}")
             print(f"tot_rew: {rewards}")
 
