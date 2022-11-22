@@ -66,7 +66,7 @@ class Turtlebot3GazeboEnv(gym.Env):
     # done function
     def is_done(self):
         # reached goal
-        if self.dist_to_goal() < 0.01:
+        if self.dist_to_goal() < 0.03:
             print("GOAL")
             return True
 

@@ -14,6 +14,7 @@ if __name__ == '__main__':
     try:
         model = DQN("MlpPolicy", env, verbose=1)
         model = DQN.load("dqn_turtlebot")
+        model.set_parameters("dqn_turtlebot")
         
         while True:
             rewards = []
@@ -25,7 +26,7 @@ if __name__ == '__main__':
                 if done:
                     print(f"current position: {state[0]:5f}, {state[1]:5f}, {state[2]:5f}")
                     print(f"target position: {state[3]:5f}, {state[4]:5f}, {state[5]:5f}")
-                    print(f"reward: {reward}")
+                    print(f"reward: {sum(rewards)}")
                     print(f"done: {done}")
                     state = env.reset()
                     break
