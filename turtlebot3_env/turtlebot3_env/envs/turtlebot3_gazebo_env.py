@@ -127,7 +127,8 @@ class Turtlebot3GazeboEnv(gym.Env):
 
     # render the trajectory
     def show(self):
-        plt.scatter(*zip(*self.trajectory))
+        plt.scatter(*zip(*self.trajectory), s=3)
+        plt.scatter(self.state["target"][0],self.state["target"][1],c='red',s=3)
         plt.xlim(-1, 1)
         plt.ylim(-1, 1)
         plt.show()

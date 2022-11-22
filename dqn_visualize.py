@@ -18,15 +18,20 @@ if __name__ == '__main__':
         
         while True:
             rewards = []
+            dists = []
             state = env.reset()
             while True:
                 action, _ = model.predict(state, deterministic=True)
+                past_state = state
                 state, reward, done, _ = env.step(action)
                 rewards.append(reward)
+                dists.append(np.linalg.norm(state-past_state))
+                #print(f"distance:{np.linalg.norm(state-past_state)}")
                 if done:
                     print(f"current position: {state[0]:5f}, {state[1]:5f}, {state[2]:5f}")
                     print(f"target position: {state[3]:5f}, {state[4]:5f}, {state[5]:5f}")
                     print(f"reward: {sum(rewards)}")
+                    print(f"dist: {np.mean(dists)}")
                     print(f"done: {done}")
                     env.show()
                     state = env.reset()
