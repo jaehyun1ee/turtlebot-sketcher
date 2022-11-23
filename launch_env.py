@@ -18,7 +18,7 @@ if __name__ == '__main__':
             its = 0
             rewards = 0
             while not done:
-                action = 0
+                action = env.action_space.sample()
                 next_state, reward, done, _ = env.step(action)
                 print(f"it ({its});\nstate : {next_state}\naction : {action}\nreward : {reward}")
 

@@ -44,7 +44,9 @@ class Turtlebot3GazeboEnv(gym.Env):
         self.state["info"] = self.get_info()
 
         # initialize variables
+        self.ep_len = 0
         self.dist_init = self.dist_to_goal()
+        self.dist_min = self.dist_init
         self.trajectory = [ self.state["agent"][:2] ]
 
     """
@@ -57,32 +59,56 @@ class Turtlebot3GazeboEnv(gym.Env):
         self.state["agent"] = self.agent.move(action)
         self.state["info"] = self.get_info()
 
+        # update dist
+        self.dist_min = min(self.dist_min, self.dist_to_goal())
+
         # update trajectory
         self.trajectory.append(self.state["agent"][:2])
 
         # query if done
-        done = self.is_done()
+        done, done_state = self.is_done()
 
         # compute reward
-        reward = self.compute_reward(action, done)
+        reward = self.compute_reward(action, done_state)
+
+        # increment episode length
+        self.ep_len += 1
 
         return self.state_to_obs(), reward, done, {}
 
     # done function
     def is_done(self):
+        dist_current = self.dist_to_goal()
+
         # reached goal
-        if self.dist_to_goal() < 0.03:
+        if dist_current < 0.03:
             print("GOAL")
-            return True
+            return True, 0
+
+        # passed goal
+        if np.dot(self.state["agent"][:2], self.state["target"][:2]) > np.linalg.norm(self.state["target"][:2]) ** 2:
+            print("PASSED GOAL")
+            return True, 1
+
+        # no improvement (comment out on deployment)
+        if self.dist_to_goal() > self.dist_min + 0.01:
+            print(f"NO IMPROVEMENT : {self.dist_to_goal()} {self.dist_min}")
+            return True, 3
+
+        # episode ends (comment out on training)
+        """
+        if self.ep_len > 5000:
+            return True, 3
+        """
 
         # out of canvas
         if self.state["agent"][0] > 1 or self.state["agent"][0] < -1 or self.state["agent"][1] > 1 or self.state["agent"][1] < -1:
-            return True
+            return True, 2
         
-        return False
+        return False, -1
     
     # reward function
-    def compute_reward(self, action, done):
+    def compute_reward(self, action, done_state):
         rot_diff = self.state["info"][2] - self.state["agent"][2]
         if rot_diff > np.pi:
             rot_diff -= 2 * np.pi
@@ -101,12 +127,17 @@ class Turtlebot3GazeboEnv(gym.Env):
         reward = round(rot_reward[action] * 5, 2) * dist_reward - 5
         #print(f"dist_reward:{dist_reward:4f}, rot_reward:{rot_reward[action]:4f}, reward:{reward:4f}")
 
-        if done:
+        if done_state == 0:
+            reward = 200
+            self.agent.stop()
+        elif done_state == 1:
+            reward = -100
+            self.agent.stop()
+        elif done_state == 2:
             reward = -200
             self.agent.stop()
-
-        if done and dist_current < 0.1:
-            reward = 200
+        elif done_state == 3:
+            reward = -200
             self.agent.stop()
 
         return reward
@@ -116,7 +147,12 @@ class Turtlebot3GazeboEnv(gym.Env):
         self.state["agent"] = self.agent.reset()
         self.state["target"] = self.random_vector()
         self.state["info"] = self.get_info()
+
+        self.ep_len = 0
+
         self.dist_init = self.dist_to_goal()
+        self.dist_min = self.dist_init
+
         self.trajectory = [ self.state["agent"][:2] ]
 
         return self.state_to_obs()
@@ -127,8 +163,8 @@ class Turtlebot3GazeboEnv(gym.Env):
 
     # render the trajectory
     def show(self):
-        plt.scatter(*zip(*self.trajectory), s=3)
-        plt.scatter(self.state["target"][0],self.state["target"][1],c='red',s=3)
+        plt.scatter(*zip(*self.trajectory), s=1)
+        plt.scatter(self.state["target"][0],self.state["target"][1],c='red',s=1)
         plt.xlim(-1, 1)
         plt.ylim(-1, 1)
         plt.show()
@@ -148,9 +184,7 @@ class Turtlebot3GazeboEnv(gym.Env):
 
     # returns the distance between the current agent and the goal
     def dist_to_goal(self):
-        dx = self.state["target"][0] - self.state["agent"][0]
-        dy = self.state["target"][1] - self.state["agent"][1]
-        return sqrt(dx ** 2 + dy ** 2)
+        return np.linalg.norm(self.state["target"][:2] - self.state["agent"][:2])
     
     # returns the cosine similarity between the current agent and the goal
     def similarity_to_goal(self):
@@ -208,8 +242,11 @@ class Agent():
         cmd = Twist()
         #cmd.linear.x = ((self.n_linear - 1) / 2 - action[0]) * self.max_linear_vel
         #cmd.angular.z = ((self.n_angular - 1) / 2 - action[1]) * self.max_angular_vel
-        cmd.linear.x = 0.15  
         cmd.angular.z = ((self.n_angular - 1) / 2 - action) * self.max_angular_vel
+        if cmd.angular.z != 0:
+            cmd.linear.x = 0
+        else:
+            cmd.linear.x = 0.15
         self.cmd_vel.publish(cmd)
 
         return self.get_state()
