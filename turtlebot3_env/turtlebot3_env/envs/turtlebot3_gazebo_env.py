@@ -32,7 +32,7 @@ class Turtlebot3GazeboEnv(gym.Env):
         self.agent = Agent(5) 
 
         # initialize environment (MDP definition)
-        self.observation_space = spaces.Box(low=np.array([-1, -1, -np.pi, -1, -1, -np.pi]), high=np.array([1, 1, np.pi, 1, 1, np.pi]), shape=(6,), dtype=np.float64) # (x_agent, y_agent, rot_agent, x_goal, y_goal, dist_to_goal, similarity_to_goal)
+        self.observation_space = spaces.Box(low=np.array([-1, -1, -np.pi, 0, -1.5, -1, -1, -np.pi]), high=np.array([1, 1, np.pi, 0.15, 1.5, 1, 1, np.pi]), shape=(8,), dtype=np.float64) # (x_agent, y_agent, rot_agent, x_goal, y_goal, dist_to_goal, similarity_to_goal)
         #self.action_space = spaces.MultiDiscrete(np.array([ 5, 5 ])) # rotate and forward      
         self.action_space = spaces.Discrete(5) # rotate and forward      
         self.state = {
@@ -58,6 +58,8 @@ class Turtlebot3GazeboEnv(gym.Env):
         # perform action on environment and update state
         self.state["agent"] = self.agent.move(action)
         self.state["info"] = self.get_info()
+        self.state["target"][2] = atan2(self.state["target"][1]-self.state["agent"][1],
+                                        self.state["target"][0]-self.state["agent"][0])
 
         # update dist
         self.dist_min = min(self.dist_min, self.dist_to_goal())
@@ -91,6 +93,7 @@ class Turtlebot3GazeboEnv(gym.Env):
             return True, 1
 
         # no improvement (comment out on deployment)
+        """
         if self.dist_to_goal() > self.dist_min + 0.01:
             print(f"NO IMPROVEMENT : {self.dist_to_goal()} {self.dist_min}")
             return True, 3
@@ -99,7 +102,7 @@ class Turtlebot3GazeboEnv(gym.Env):
         """
         if self.ep_len > 5000:
             return True, 3
-        """
+        
 
         # out of canvas
         if self.state["agent"][0] > 1 or self.state["agent"][0] < -1 or self.state["agent"][1] > 1 or self.state["agent"][1] < -1:
@@ -236,6 +239,8 @@ class Agent():
         self.orientations = np.array([i * np.pi / 4 for i in range(8)])
         self.n_angular = n_angular
         self.max_angular_vel = 1.5
+        self.linear_x = 0
+        self.angular_z = 0
 
     # issue a move command to the turtlebot and returns its updated position
     def move(self, action):
@@ -247,6 +252,8 @@ class Agent():
             cmd.linear.x = 0
         else:
             cmd.linear.x = 0.15
+        self.linear_x = cmd.linear.x
+        self.angular_z = cmd.angular.z
         self.cmd_vel.publish(cmd)
 
         return self.get_state()
@@ -265,6 +272,8 @@ class Agent():
         cmd.pose.orientation.z = orientation[2]
         cmd.pose.orientation.w = orientation[3]
         self.set_model_state(cmd)
+        self.linaer_x = 0
+        self.angular_z = 0
 
         return self.get_state()
 
@@ -274,4 +283,4 @@ class Agent():
         y = resp.pose.position.y
         rot = euler_from_quaternion([resp.pose.orientation.x, resp.pose.orientation.y, resp.pose.orientation.z, resp.pose.orientation.w])
 
-        return np.array([ x, y, rot[2] ])
+        return np.array([ x, y, rot[2], self.linear_x, self.angular_z ])
