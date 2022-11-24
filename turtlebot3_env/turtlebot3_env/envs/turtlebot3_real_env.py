@@ -16,7 +16,7 @@ from geometry_msgs.msg import Twist, Point, Quaternion
 from gazebo_msgs.msg import ModelState
 from gazebo_msgs.srv import GetModelState, SetModelState
    
-class Turtlebot3GazeboEnv(gym.Env):
+class Turtlebot3RealEnv(gym.Env):
     def __init__(self):
         # initialize node
         rospy.init_node('turtlebot3_env', anonymous=False)
@@ -36,17 +36,21 @@ class Turtlebot3GazeboEnv(gym.Env):
         #self.action_space = spaces.MultiDiscrete(np.array([ 5, 5 ])) # rotate and forward      
         self.action_space = spaces.Discrete(5) # rotate and forward      
         self.state = {
-            "agent" : np.array([0, 0, 0]), # agent_x, agent_y, agent_rot
-            "target" : np.array([0, 0, 0]), # target_x, target_y, target_rot
-            "info" : np.array([0, 0, 0]), # will be updated below
+            "agent" : np.array([0., 0., 0.]), # agent_x, agent_y, agent_rot
+            "target" : np.array([0., 0., 0.]), # target_x, target_y, target_rot
+            "info" : np.array([0., 0., 0.]), # will be updated below
         } 
-        self.state["target"] = self.random_vector()
         self.state["info"] = self.get_info()
 
         # initialize variables
+        self.ep_len = 0
         self.dist_init = self.dist_to_goal()
         self.dist_min = self.dist_init
         self.trajectory = [ self.state["agent"][:2] ]
+        self.targets = [ self.state["target"][:2] ]
+
+    def init_agent_origin(self, agent_origin):
+        self.agent.set(agent_origin) 
 
     """
     MDP Logic
@@ -64,13 +68,16 @@ class Turtlebot3GazeboEnv(gym.Env):
         self.dist_min = min(self.dist_min, self.dist_to_goal())
 
         # update trajectory
-        self.trajectory.append(self.state["agent"][:2])
+        self.trajectory.append(self.state["agent"][:2] + self.agent.origin)
 
         # query if done
         done, done_state = self.is_done()
 
         # compute reward
         reward = self.compute_reward(action, done_state)
+
+        # increment episode length
+        self.ep_len += 1
 
         return self.state_to_obs(), reward, done, {}
 
@@ -88,9 +95,8 @@ class Turtlebot3GazeboEnv(gym.Env):
             print("PASSED GOAL")
             return True, 1
 
-        # no improvement (comment out on deployment)
-        if self.dist_to_goal() > self.dist_min + 0.01:
-            print(f"NO IMPROVEMENT : {self.dist_to_goal()} {self.dist_min}")
+        # episode ends (comment out on training)
+        if self.ep_len > 5000:
             return True, 3
 
         # out of canvas
@@ -137,15 +143,20 @@ class Turtlebot3GazeboEnv(gym.Env):
     # reset the environment
     def reset(self):
         self.state["agent"] = self.agent.reset()
-        self.state["target"] = self.random_vector()
         self.state["info"] = self.get_info()
+
+        self.ep_len = 0
+
+        return self.state_to_obs()
+
+    # set the target coordinates
+    def set(self, target_pos):
+        rot = atan2(target_pos[1] - self.state["agent"][1], target_pos[0] - self.state["agent"][0])
+        self.state["target"] = np.append(target_pos, rot)
+        self.targets.append(self.state["target"][:2] + self.agent.origin)
 
         self.dist_init = self.dist_to_goal()
         self.dist_min = self.dist_init
-
-        self.trajectory = [ self.state["agent"][:2] ]
-
-        return self.state_to_obs()
 
     # stop the agent
     def stop(self):
@@ -154,7 +165,7 @@ class Turtlebot3GazeboEnv(gym.Env):
     # render the trajectory
     def show(self):
         plt.scatter(*zip(*self.trajectory), s=0.3)
-        plt.scatter(self.state["target"][0],self.state["target"][1],c='red',s=0.3)
+        plt.scatter(*zip(*self.targets), c='red',s=0.3)
         plt.xlim(-1, 1)
         plt.ylim(-1, 1)
         plt.show()
@@ -184,14 +195,6 @@ class Turtlebot3GazeboEnv(gym.Env):
             rot = self.state["agent"][2]
             va = np.array([np.cos(rot), np.sin(rot)])
         return np.dot(va, vt) / (np.linalg.norm(va) * np.linalg.norm(vt))
-
-    # returns a random 2D vector in a circle with radius 0
-    def random_vector(self):
-        pos_rand = np.zeros(2)
-        while np.allclose(pos_rand, np.zeros(2)) or np.linalg.norm(pos_rand) > 1 or np.linalg.norm(pos_rand) < 0.02:
-            pos_rand = np.random.rand(2) * 2 - 1
-        rot = atan2(pos_rand[1] - self.state["agent"][1], pos_rand[0] - self.state["agent"][0])
-        return np.append(pos_rand, rot)
  
     # find and kill gazebo
     def close(self):
@@ -224,6 +227,7 @@ class Agent():
         # initialize parameters
         self.model_name = "turtlebot3_burger"
         self.orientations = np.array([i * np.pi / 4 for i in range(8)])
+        self.origin = np.array([ 0., 0. ])
         self.n_angular = n_angular
         self.max_angular_vel = 1.5
         self.linear_x = 0
@@ -251,23 +255,35 @@ class Agent():
 
     # resets the turtlebot in the origin with a random orientation
     def reset(self):
+        # reset the origin
+        self.origin += self.get_state()[:2]
+        
+        # turtlebot has stopped
+        self.linaer_x = 0
+        self.angular_z = 0
+
+        return self.get_state()
+
+    def set(self, agent_origin):
+        self.origin = agent_origin
+
         cmd = ModelState()
         cmd.model_name = self.model_name
+
+        cmd.pose.position.x = agent_origin[0]
+        cmd.pose.position.y = agent_origin[1]
+
         orientation = quaternion_from_euler(0, 0, np.random.choice(self.orientations))
         cmd.pose.orientation.x = orientation[0]
         cmd.pose.orientation.y = orientation[1]
         cmd.pose.orientation.z = orientation[2]
         cmd.pose.orientation.w = orientation[3]
         self.set_model_state(cmd)
-        self.linaer_x = 0
-        self.angular_z = 0
-
-        return self.get_state()
 
     def get_state(self):
         resp = self.get_model_state(self.model_name, "")
-        x = resp.pose.position.x
-        y = resp.pose.position.y
+        x = resp.pose.position.x - self.origin[0]
+        y = resp.pose.position.y - self.origin[1]
         rot = euler_from_quaternion([resp.pose.orientation.x, resp.pose.orientation.y, resp.pose.orientation.z, resp.pose.orientation.w])
 
         return np.array([ x, y, rot[2], self.linear_x, self.angular_z ])

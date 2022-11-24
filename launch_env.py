@@ -6,7 +6,7 @@ import time
 
 if __name__ == '__main__':
     # make environment
-    env = gym.make('turtlebot3_env/Turtlebot3-v0')
+    env = gym.make('turtlebot3_env/Turtlebot3-real-v0')
     try:
         conti = True
         while conti:
