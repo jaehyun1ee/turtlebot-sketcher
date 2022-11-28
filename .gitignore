@@ -63,5 +63,5 @@ dqn_turtlebot.zip
 model/
 logs/
 __MACOSX/
-commander/
 output/
+*.ndjson
