@@ -20,7 +20,7 @@ def draw(env, model, title, start, strokes):
                 break
         env.stop()
     env.show(title)
-    input("ENTER TO PROCEED TO NEXT EXAMPLE")
+    #input("ENTER TO PROCEED TO NEXT EXAMPLE")
 
 def commands_to_vectors(commands):
     start = commands[0]
@@ -42,7 +42,7 @@ def vectors_to_strokes(start, vectors):
 
 if __name__ == "__main__":
     PATH_PREFIX = "./benchmark/stroke_process_"
-    PATH_DIRNAME = [ "15_campfire", "37_calculator", "52_bandage", "88_cannon" ]
+    PATH_DIRNAME = [ "15_campfire", "37_calculator", "52_bandage", "88_cannon", "96_bicycle", "35_birthdaycake", "43_brain", "6_effel_tower", "95_candle", "97_bucket" ]
     PATH_POSTFIX = "/stroker_input.npy"
 
     # make environment
@@ -60,7 +60,7 @@ if __name__ == "__main__":
             start, vectors = commands_to_vectors(commands)
             start, strokes = vectors_to_strokes(start, vectors)
 
-            draw(env, model, path, start, strokes)
+            draw(env, model, dirname, start, strokes)
             env.clear()
     finally:
         env.close()

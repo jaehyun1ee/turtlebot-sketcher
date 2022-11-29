@@ -170,12 +170,14 @@ class Turtlebot3RealEnv(gym.Env):
         plt.scatter(*zip(*self.targets), c='red',s=0.3)
         plt.xlim(-1, 1)
         plt.ylim(-1, 1)
-        plt.show()
+        plt.savefig("drawings/" + title + ".png")
+        #plt.show()
     
     # clear the canvas
     def clear(self):
         self.trajectory = []
         self.targets = []
+        plt.clf()
 
     """
     HELPER FUNCTIONS
