@@ -96,9 +96,11 @@ class Turtlebot3GazeboEnv(gym.Env):
             return True, 1
 
         # no improvement (comment out on deployment)
+        """
         if self.dist_to_goal() > self.dist_min + 0.01:
             print(f"NO IMPROVEMENT : {self.dist_to_goal()} {self.dist_min}")
             return True, 3
+        """
 
         # out of canvas
         if self.state["agent"][0] > 1 or self.state["agent"][0] < -1 or self.state["agent"][1] > 1 or self.state["agent"][1] < -1:

@@ -43,7 +43,8 @@ def vectors_to_strokes(start, vectors):
 if __name__ == "__main__":
     PATH_PREFIX = "./benchmark/stroke_process_"
     PATH_DIRNAME = [ "15_campfire", "37_calculator", "52_bandage", "88_cannon", "96_bicycle", "35_birthdaycake", "43_brain", "6_effel_tower", "95_candle", "97_bucket" ]
-    PATH_POSTFIX = "/stroker_input.npy"
+    PATH_POSTFIX_COMMANDER = "/stroker_input.npy"
+    PATH_POSTFIX_ORIGINAL = "/original_input.npy"
 
     # make environment
     env = gym.make('turtlebot3_env/Turtlebot3-real-v0')
@@ -51,16 +52,24 @@ if __name__ == "__main__":
     # load model
     try:
         model = DQN("MlpPolicy", env, verbose=1)
-        model = DQN.load("./stroker/dqn_turtlebot")
-        model.set_parameters("./stroker/dqn_turtlebot")
+        model = DQN.load("./dqn_turtlebot")
+        model.set_parameters("./dqn_turtlebot")
 
         for dirname in PATH_DIRNAME:
-            path = PATH_PREFIX + dirname + PATH_POSTFIX
-            commands = np.load(path)
+            path_command = PATH_PREFIX + dirname + PATH_POSTFIX_COMMANDER
+            commands = np.load(path_command)
             start, vectors = commands_to_vectors(commands)
             start, strokes = vectors_to_strokes(start, vectors)
 
-            draw(env, model, PATH_PREFIX + dirname + "/", start, strokes)
+            draw(env, model, PATH_PREFIX + dirname + "/commander_and_stroker.png", start, strokes)
+            env.clear()
+
+            path_original = PATH_PREFIX + dirname + PATH_POSTFIX_ORIGINAL
+            original = np.load(path_original)
+            start, vectors = commands_to_vectors(original)
+            start, strokes = vectors_to_strokes(start, vectors)
+
+            draw(env, model, PATH_PREFIX + dirname + "/stroker.png", start, strokes)
             env.clear()
     finally:
         env.close()
