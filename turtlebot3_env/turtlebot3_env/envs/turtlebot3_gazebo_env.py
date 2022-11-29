@@ -72,7 +72,13 @@ class Turtlebot3GazeboEnv(gym.Env):
         # compute reward
         reward = self.compute_reward(action, done_state)
 
-        return self.state_to_obs(), reward, done, {}
+        # add info
+        info = {}
+        if done:
+            info["is_success"] = (done_state == 0)
+            info["dist_to_goal"] = self.dist_to_goal()
+
+        return self.state_to_obs(), reward, done, info
 
     # done function
     def is_done(self):

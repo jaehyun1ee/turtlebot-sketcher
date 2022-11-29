@@ -6,10 +6,15 @@ import os, site
 os.environ["LD_PRELOAD"] = site.USER_SITE + "/torch/lib/../../torch.libs/libgomp-d22c30c5.so.1.0.0"
 
 from stable_baselines3 import DQN
+from stable_baselines3.common.vec_env import DummyVecEnv
+from stable_baselines3.common.monitor import Monitor
+from callback import TensorboardCallback
 
 if __name__ == '__main__':
     # make environment
     env = gym.make('turtlebot3_env/Turtlebot3-v0')
+    #env = DummyVecEnv([lambda: gym.make('turtlebot3_env/Turtlebot3-v0')])
+    env = Monitor(env, info_keywords=("is_success","dist_to_goal"))
 
     try:
         try:
@@ -20,7 +25,7 @@ if __name__ == '__main__':
             model = DQN("MlpPolicy", env, verbose=1, tensorboard_log="./logs/")
             print("model load failed")
         
-        model.learn(total_timesteps=1000000, log_interval=10, reset_num_timesteps=False)
+        model.learn(total_timesteps=1000000, log_interval=10, reset_num_timesteps=False, callback=TensorboardCallback())
         print("training complete")
         model.save("dqn_turtlebot")
     finally:
