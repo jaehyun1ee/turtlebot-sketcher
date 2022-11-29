@@ -5,6 +5,6 @@ class TensorboardCallback(BaseCallback):
         super(TensorboardCallback, self).__init__(verbose)
 
     def _on_step(self):
-        dist = self.training_env.envs[0].dist_to_goal()
-        self.logger.record("dist_to_goal", dist)
+        dist = self.training_env.envs[0].dist_to_goal() * 64
+        self.logger.record("pixel_difference", dist)
         return True
