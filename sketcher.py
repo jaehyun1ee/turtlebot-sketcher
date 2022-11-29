@@ -60,7 +60,7 @@ if __name__ == "__main__":
             start, vectors = commands_to_vectors(commands)
             start, strokes = vectors_to_strokes(start, vectors)
 
-            draw(env, model, dirname, start, strokes)
+            draw(env, model, PATH_PREFIX + dirname + "/", start, strokes)
             env.clear()
     finally:
         env.close()

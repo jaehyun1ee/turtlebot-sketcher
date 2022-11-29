@@ -164,13 +164,12 @@ class Turtlebot3RealEnv(gym.Env):
         self.state["info"] = self.get_info()
 
     # render the trajectory
-    def show(self, title):
-        plt.title(title)
+    def show(self, path):
         plt.scatter(*zip(*self.trajectory), s=0.3)
         plt.scatter(*zip(*self.targets), c='red',s=0.3)
         plt.xlim(-1, 1)
         plt.ylim(-1, 1)
-        plt.savefig("drawings/" + title + ".png")
+        plt.savefig(path + "commander_and_stroker.png")
         #plt.show()
     
     # clear the canvas
