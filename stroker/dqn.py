@@ -14,7 +14,7 @@ if __name__ == '__main__':
     # make environment
     env = gym.make('turtlebot3_env/Turtlebot3-v0')
     #env = DummyVecEnv([lambda: gym.make('turtlebot3_env/Turtlebot3-v0')])
-    env = Monitor(env, info_keywords=("is_success","dist_to_goal"))
+    env = Monitor(env, "./logs/", info_keywords=("is_success","pixel_diff"))
 
     try:
         try:
@@ -25,7 +25,7 @@ if __name__ == '__main__':
             model = DQN("MlpPolicy", env, verbose=1, tensorboard_log="./logs/")
             print("model load failed")
         
-        model.learn(total_timesteps=1000000, log_interval=10, reset_num_timesteps=False, callback=TensorboardCallback())
+        model.learn(total_timesteps=1000000, log_interval=50, reset_num_timesteps=False)
         print("training complete")
         model.save("dqn_turtlebot")
     finally:

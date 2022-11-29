@@ -47,6 +47,7 @@ class Turtlebot3GazeboEnv(gym.Env):
         self.dist_init = self.dist_to_goal()
         self.dist_min = self.dist_init
         self.trajectory = [ self.state["agent"][:2] ]
+        self.dist_sum = 0
 
     """
     MDP Logic
@@ -76,7 +77,7 @@ class Turtlebot3GazeboEnv(gym.Env):
         info = {}
         if done:
             info["is_success"] = (done_state == 0)
-            info["dist_to_goal"] = self.dist_to_goal()
+            info["pixel_diff"] = self.dist_to_goal() * 64
 
         return self.state_to_obs(), reward, done, info
 
