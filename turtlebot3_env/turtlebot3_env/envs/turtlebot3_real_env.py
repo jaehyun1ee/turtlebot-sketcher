@@ -23,7 +23,7 @@ class Turtlebot3RealEnv(gym.Env):
 
         # launch gazebo
         ros_path = os.path.dirname(subprocess.check_output(["which", "roscore"]))
-        launchfile = str(os.getcwd()) + "/../turtlebot3_simulations/turtlebot3_gazebo/launch/turtlebot3_empty_world.launch"         
+        launchfile = str(os.getcwd()) + "/turtlebot3_simulations/turtlebot3_gazebo/launch/turtlebot3_empty_world.launch"         
         os.environ["TURTLEBOT3_MODEL"] = "burger"
         subprocess.Popen([sys.executable, os.path.join(ros_path, b"roslaunch"), "-p", "11311", launchfile])
         print ("Gazebo launched!")
@@ -46,11 +46,12 @@ class Turtlebot3RealEnv(gym.Env):
         self.ep_len = 0
         self.dist_init = self.dist_to_goal()
         self.dist_min = self.dist_init
-        self.trajectory = [ self.state["agent"][:2] ]
-        self.targets = [ self.state["target"][:2] ]
+        self.trajectory = []
+        self.targets = []
 
-    def init_agent_origin(self, agent_origin):
-        self.agent.set(agent_origin) 
+    def init_agent(self, agent_pos):
+        self.trajectory.append(agent_pos)
+        self.agent.set(agent_pos) 
 
     """
     MDP Logic
@@ -163,12 +164,18 @@ class Turtlebot3RealEnv(gym.Env):
         self.state["info"] = self.get_info()
 
     # render the trajectory
-    def show(self):
+    def show(self, title):
+        plt.title(title)
         plt.scatter(*zip(*self.trajectory), s=0.3)
         plt.scatter(*zip(*self.targets), c='red',s=0.3)
         plt.xlim(-1, 1)
         plt.ylim(-1, 1)
         plt.show()
+    
+    # clear the canvas
+    def clear(self):
+        self.trajectory = []
+        self.targets = []
 
     """
     HELPER FUNCTIONS

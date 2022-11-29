@@ -23,7 +23,7 @@ class Turtlebot3GazeboEnv(gym.Env):
 
         # launch gazebo
         ros_path = os.path.dirname(subprocess.check_output(["which", "roscore"]))
-        launchfile = str(os.getcwd()) + "/../turtlebot3_simulations/turtlebot3_gazebo/launch/turtlebot3_empty_world.launch"         
+        launchfile = str(os.getcwd()) + "/turtlebot3_simulations/turtlebot3_gazebo/launch/turtlebot3_empty_world.launch"         
         os.environ["TURTLEBOT3_MODEL"] = "burger"
         subprocess.Popen([sys.executable, os.path.join(ros_path, b"roslaunch"), "-p", "11311", launchfile])
         print ("Gazebo launched!")
