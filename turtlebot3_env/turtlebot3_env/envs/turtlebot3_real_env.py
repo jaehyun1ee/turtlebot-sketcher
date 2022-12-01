@@ -88,12 +88,10 @@ class Turtlebot3RealEnv(gym.Env):
 
         # reached goal
         if dist_current < 0.03:
-            print("GOAL")
             return True, 0
 
         # passed goal
         if np.dot(self.state["agent"][:2], self.state["target"][:2]) > np.linalg.norm(self.state["target"][:2]) ** 2:
-            print("PASSED GOAL")
             return True, 1
 
         # episode ends (comment out on training)
