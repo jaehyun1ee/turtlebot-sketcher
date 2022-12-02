@@ -166,9 +166,9 @@ class Turtlebot3RealEnv(gym.Env):
         #plt.title(title)
         plt.scatter(*zip(*self.trajectory), s=0.3)
         plt.scatter(*zip(*self.targets), c='red',s=0.3)
+        plt.axis('square')
         plt.xlim(-1, 1)
         plt.ylim(-1, 1)
-        plt.axis('square')
         plt.savefig(title)        
         #plt.show()
     
