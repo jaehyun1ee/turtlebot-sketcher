@@ -163,11 +163,12 @@ class Turtlebot3RealEnv(gym.Env):
 
     # render the trajectory
     def show(self, title):
-        plt.title(title)
+        #plt.title(title)
         plt.scatter(*zip(*self.trajectory), s=0.3)
         plt.scatter(*zip(*self.targets), c='red',s=0.3)
         plt.xlim(-1, 1)
         plt.ylim(-1, 1)
+        plt.axis('square')
         plt.savefig(title)        
         #plt.show()
     
