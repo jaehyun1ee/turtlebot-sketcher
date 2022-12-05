@@ -14,7 +14,7 @@ CIFARDNNModel.compile(
 )
 """
 print("Model prepared!")
-CIFARDNNModel.load_weights('./output/checkpoint.mdl').expect_partial()
+CIFARDNNModel.load_weights('./model/commander/checkpoint.mdl').expect_partial()
 
 # Provide ramdom img & starting point to draw 
 # Output: bitmap img to draw, list of start position [x,y], list of end position [x,y]
@@ -27,7 +27,7 @@ def get_random_img(path):
         with open(path) as f:
             print("--- Loading file: {}".format(f))
             random_drawings = json.load(f)
-        random_stroke = random.choice(random.choice(random_drawings))
+        random_stroke = random.choice(random_drawings)
         bitmap_img = stroke_to_bitmap([random_stroke])
         start_point = np.array([random_stroke[0][0], random_stroke[1][0]])
         end_point = np.array([random_stroke[0][-1], random_stroke[1][-1]])
@@ -44,31 +44,51 @@ def get_random_img(path):
     
     return bitmap_img, start_point, end_point
 
+# Get strokes from the path
+# Output: list of strokes / stroke in format [[x1 .. xn][y1 .. yn]]
+def get_img_strokes(path):
+    print("Processing ...")
+    stroke_list = np.load(path, allow_pickle=True)
+    return stroke_list
+
+# Convert a single stroke to bitmap img
+def stroke2img(stroke):
+    bitmap_img = stroke_to_bitmap([stroke])
+    return bitmap_img
+
+def stroke2points(stroke):
+    return axis_to_points(stroke[0], stroke[1])
+
 # Plot any img represented by 128x128 bitmap
-def plot_img(bitmap_img):
-    plot_bitmap(bitmap_img, "img_display")
+def plot_img(bitmap_img, name):
+    plot_bitmap(bitmap_img, path)
 
 # Convert img to strokes 
 # input: bitmap img, start point list [x,y]
 # output: list of points to draw [[x1, y1], [x2, y2], ..., [xn, yn]]
-def img_to_strokes(bitmap_img, start_point, end_point):
-    goal_bitmap = bitmap_img
+def img2points(goal_bitmap, start_point, end_point):    
+    
     cur_bitmap = point_to_bitmap(start_point)
     point_bitmap = cur_bitmap
-    
-    cur_point = start_point
-    x_values = [cur_point[0]]
-    y_values = [cur_point[1]]
-    #while True:
-    for i in range (15):
-        dist = (cur_point[0]-end_point[0])**2 + (cur_point[1]-end_point[1])**2
-        if dist < 10: break
         
+    x_values = []
+    y_values = []
+    x_values.append(start_point[0])
+    y_values.append(start_point[1])
+
+    max_iter = 60
+    for i in range(max_iter):
         next_point = commander_get_nextpoint(goal_bitmap, cur_bitmap, point_bitmap)[0]
-        cur_bitmap = stroke_to_bitmap([[x_values, y_values]])
-        point_bitmap = point_to_bitmap(next_point)
+        
         x_values.append(next_point[0])
         y_values.append(next_point[1])
+        
+        cur_bitmap = stroke_to_bitmap([[x_values, y_values]])    
+        point_bitmap = point_to_bitmap(next_point)
+            
+        dist = (end_point[0]-next_point[0])**2 + (end_point[1]-next_point[1])**2
+        if i > 5 and dist < 45:
+            break
     return axis_to_points(x_values, y_values)
 
 def commander_get_nextpoint(goal_bitmap, current_bitmap, cur_point):
@@ -86,3 +106,8 @@ def commander_get_nextpoint(goal_bitmap, current_bitmap, cur_point):
     
     output = CIFARDNNModel.predict(input_dataset)
     return output
+
+def visualize_commander(points_list, path):
+    stroke_list = list(map(points_to_axis, points_list))
+    bitmap_img = stroke_to_bitmap(stroke_list)
+    plot_bitmap(bitmap_img, path)

@@ -28,6 +28,9 @@ assert WIDTH == HEIGHT
 def axis_to_points(x_axis, y_axis):
     return np.array([x_axis, y_axis]).T.reshape(-1, 2)
 
+def one_axis_to_points(xy_axis):
+    return np.array([xy_axis[0], xy_axis[1]]).T.reshape(-1, 2).tolist()
+
 def points_to_axis(points):
     points = np.array(points)
     return points[:, 0], points[:, 1]
@@ -58,7 +61,7 @@ def stroke_to_bitmap(strokes, bitmap=None):
     if bitmap is None:
         bitmap = np.zeros(shape=(HEIGHT, WIDTH), dtype=bool)
     
-    for stroke in strokes:
+    for stroke in strokes: 
         x_axis, y_axis = stroke
         points = axis_to_points(x_axis, y_axis)
         for start, end in zip(points[:-1], points[1:]):
@@ -78,25 +81,19 @@ def point_to_bitmap(point, bitmap=None):
     if bitmap is None:
         bitmap = np.zeros(shape=(HEIGHT, WIDTH), dtype = bool)
     x, y = map(int, point)
-    bitmap[cord_to_index(x,y)] = 1
+    bitmap[cord_to_index(x,y)] = 1  
  
     return bitmap
 
-def plot_bitmap(bitmap, file_name):
+def plot_bitmap(bitmap, path):
+    bitmap = np.flip(bitmap, 0)
     bitmap = bitmap.astype(float)
     if len(bitmap.shape) == 2:
         plt.imshow(bitmap, cmap='Greys')
     elif len(bitmap.shape) == 3:
         plt.imshow(bitmap)
     plt.show()
-    plt.savefig("../output/" + file_name + ".png")
-    
-def clip(value):
-    if 0 < value < WIDTH-1:
-        return value
-    if value <= 0:
-        return 0
-    return WIDTH-1
+    plt.savefig(path)
 
 import traceback
 
@@ -109,7 +106,7 @@ def stroke_to_trainset(strokes):
         # [x0, x1, x2, ..., xm]
 
         for random_l in [np.random.randint(len(x_axis))]:
-            prev_stroke = [x_axis[:random_l+1], y_axis[:random_l+1]]
+            prev_stroke = np.array([x_axis[:random_l+1], y_axis[:random_l+1]])
             end_point = [x_axis[random_l], y_axis[random_l]]
 
             if random_l + 1 == len(x_axis):
@@ -118,13 +115,12 @@ def stroke_to_trainset(strokes):
                 next_point = [x_axis[random_l+1], y_axis[random_l+1]]
                 
             error_epsilon = 4
-            new_x, new_y = next_point
-            # print("prev:", new_x, new_y)
-            new_x = clip(new_x + error_epsilon * (np.random.random() * 2 - 1))
-            new_y = clip(new_y + error_epsilon * (np.random.random() * 2 - 1))
-            # print("next:", new_x, new_y)
-            
-            prev_stroke[0][-1], prev_stroke[1][-1] = new_x, new_y
+            stroke_start = prev_stroke[0]
+            prev_stroke = np.clip(
+                prev_stroke + error_epsilon * (np.random.random(prev_stroke.shape) * 2 - 1),
+                0, WIDTH-1
+            )
+            prev_stroke[0] = stroke_start
         
             bitmap_img = stroke_to_bitmap([stroke_k])
             bitmap_prev = stroke_to_bitmap([prev_stroke])
@@ -277,7 +273,7 @@ def load_trainset(CALCULATE_MODE):
 
     def val_gen():
         for idx in range(valid_size):
-            yield val_input[idx], val_output[idx]
+            yield val_input[idx], val_output[idx] 
 
     print("\nLoading trainset...")
 
@@ -319,14 +315,6 @@ def load_trainset(CALCULATE_MODE):
     valid_size = len(val_input)
 
     print("Conversion [list -> tf.data.Dataset] on progress...")
-# train_dataset = tf.data.Dataset.from_tensor_slices(
-#     (train_input, train_output)
-# ).batch(16)
-
-# val_dataset = tf.data.Dataset.from_tensor_slices(
-#     (val_input, val_output)
-# ).batch(valid_size)
-
 
     train_dataset = tf.data.Dataset.from_generator(
         train_gen, output_types=(bool, np.int8), output_shapes=([HEIGHT, WIDTH, 3], [2])
@@ -336,28 +324,12 @@ def load_trainset(CALCULATE_MODE):
         val_gen, output_types=(bool, np.int8), output_shapes=([HEIGHT, WIDTH, 3], [2])
     ).batch(32)
 
-# # garbage collecting heavy arrays...
-# print("Garbage collecting...")
-# del train_input, train_output, val_input, val_output
-
     print("****** TRAINING INFORMATIONS ******")
     print("Train size:", train_size)
     print("Valid size:", valid_size)
     print("***********************************")
     
     return train_dataset, val_dataset
-
-# # learning rate decay 구현
-# def scheduler(epoch, _lr):
-#     if epoch < 32 * 1:
-#         return 1e-3
-#     if epoch < 32 * 3:
-#         return 1e-4
-#     elif epoch < 48 * 3:
-#         return 1e-5
-#     else:
-#         return 1e-6
-# lr_modify = keras.callbacks.LearningRateScheduler(scheduler)
 
 ############################ !!! 직접 짠 코드 아님 !!! 구글에서 긁어옴 !!! ############################
 
@@ -386,6 +358,13 @@ def plot_history(history):
 
 # 학습 데이터를 가지고 모델을 훈련, epochs 횟수만큼 반복
 
+def scheduler(epoch, _lr):
+    if epoch <= 2:
+        return 1e-4
+    else:
+        return 1e-5
+lr_modify = keras.callbacks.LearningRateScheduler(scheduler)
+
 def train():
     
     CALCULATE_MODE = prepare_data()
@@ -397,8 +376,8 @@ def train():
     """
     CIFARDNNModel.compile(
         optimizer=tfa.optimizers.AdamW(
-            learning_rate=1e-4,
-            weight_decay=1e-4
+            # learning_rate=2e-5,
+            weight_decay=1e-6
         ),
         loss=keras.losses.MeanSquaredError(),
         metrics=['mean_absolute_error', 'mean_absolute_percentage_error']
@@ -406,21 +385,20 @@ def train():
     """
     print("Model prepared!")
     CIFARDNNModel.summary()
-    CIFARDNNModel.load_weights('../output/checkpoint.mdl')
     
     print("*** Ready to train ***")
     history = CIFARDNNModel.fit(
         train_dataset,
-        epochs= 10, batch_size=32,
+        epochs= 30, batch_size=32,
         validation_data=val_dataset,
-        # callbacks=[lr_modify]
+        callbacks=[lr_modify]
     )
 
     print("visualizing...")
     plot_history(history)
 
     print("saving weights...")
-    CIFARDNNModel.save_weights('../output/checkpoint.mdl')
+    CIFARDNNModel.save_weights('./model/commander/checkpoint.mdl')
     print("goodbye")
     
 if __name__ == "__main__":

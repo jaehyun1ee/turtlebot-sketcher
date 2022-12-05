@@ -61,7 +61,7 @@ build-*/
 sac_turtlebot.zip
 dqn_turtlebot.zip
 model/
-logs/
+stroker/train/logs/
 __MACOSX/
 output/
 *.ndjson
