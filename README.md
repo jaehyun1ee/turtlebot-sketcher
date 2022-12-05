@@ -1,4 +1,5 @@
-# CS470 Turtlebot3 Sketcher - Stroker
+# Reproducing a Line Drawing with Turtlebot3 Sketcher
+### CS470 Team 2 Sujeburger
 
 Ubuntu 20.04 LTS, ROS Noetic
 
