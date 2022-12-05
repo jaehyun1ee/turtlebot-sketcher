@@ -1,4 +1,4 @@
-# Compiled Object files
+#name Compiled Object files
 *.slo
 *.lo
 *.o
@@ -58,10 +58,9 @@ build-*/
 *.dat
 *.txt.user
 *.gch
-sac_turtlebot.zip
-dqn_turtlebot.zip
 model/
 stroker/train/logs/
 __MACOSX/
 output/
 *.ndjson
+*.zip
