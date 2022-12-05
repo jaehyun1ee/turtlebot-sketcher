@@ -64,6 +64,7 @@ if __name__ == '__main__':
                 commands.append(commander.img2points(img, start, end))
 
             # commander-only
+            commander.visualize_commander(strokes, PATH_PREFIX + dirname + "/raw.png")
             commander.visualize_commander(commands, PATH_PREFIX + dirname + "/commander.png")
 
             # RUN STROKER
