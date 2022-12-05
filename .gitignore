@@ -64,3 +64,4 @@ __MACOSX/
 output/
 *.ndjson
 *.zip
+*.png

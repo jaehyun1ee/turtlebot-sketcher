@@ -92,7 +92,7 @@ def plot_bitmap(bitmap, path):
         plt.imshow(bitmap, cmap='Greys')
     elif len(bitmap.shape) == 3:
         plt.imshow(bitmap)
-    plt.show()
+    #plt.show()
     plt.savefig(path)
 
 import traceback
