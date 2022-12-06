@@ -1,6 +1,12 @@
 # Reproducing a Line Drawing with Turtlebot3 Sketcher
 ### CS470 Team 2 Sujeburger
 
+# Demo Video
+
+[![Demo of our Sketcher](http://img.youtube.com/vi/1Hjz8KOL0RE/0.jpg)](https://youtu.be/1Hjz8KOL0RE)
+
+# How to Reproduce our Work (Under Maintenance)
+
 Ubuntu 20.04 LTS, ROS Noetic
 
 # To use Docker
