@@ -1,67 +1,147 @@
 # Reproducing a Line Drawing with Turtlebot3 Sketcher
-### CS470 Team 2 Sujeburger
+#### 2022 Fall CS470 Team 2 Sujeburger
 
-# Demo Video
+# About Our Project
+
+We have implemented a Turtlebot3 Sketcher, that reproduces a given line drawing (or doodle) with the robot's trajectory as follows.
+
+# Demo Video of Our Model
 
 [![Demo of our Sketcher](http://img.youtube.com/vi/1Hjz8KOL0RE/0.jpg)](https://youtu.be/1Hjz8KOL0RE)
 
-# How to Reproduce our Work (Under Maintenance)
+# How to Reproduce our Work
 
-Ubuntu 20.04 LTS, ROS Noetic
+This section explains how to run an example of our model.
 
-# To use Docker
+The following steps will lead to a run of, `run_benchmark.py`, which will run the model given the four inputs stored in `benchmark`.
 
-Pull docker image from, [https://hub.docker.com/repository/docker/wenko99/ros-noetic-turtlebot]
+## Environment
+
+Ubuntu 20.04 LTS (ARM64), ROS Noetic running on MAC M1 Parallels VM
+
+**This work has heavy dependencies, so we recommend following the requirements with a vanilla Ubuntu.**
+
+## Installing ROS
+
+Please follow the quickstart guide in [ROBOTIS EMANUAL](https://emanual.robotis.com/docs/en/platform/turtlebot3/quick-start/) for Noetic version.
+
+## Cloning this Repository
+
+Please initialize your workspace in `~/catkin_ws/src` as follows.
 
 ```
-docker run -it wenko99/ros-noetic-turtlebot:cs470
-docker container ls
-docker exec -it [id] bin/zsh
-```
-
-This repository is already cloned in `~/catkin_ws/src`. Also, gui is off for gazebo.
-
-# Initialize submodules
-
-After cloning this repository,
-
-```
+source /opt/ros/noetic/setup.sh
+mkdir -p ~/catkin_ws/src
+cd ~/catkin_ws/src/
+catkin_init_workspace
+rm -rf CMakeLists.txt
+git clone https://github.com/wenko99/cs470-stroker.git .
 git submodule update --init
 ```
 
-to clone the turtlebot3_simulations submodule
-
-# To run this example,
-
-In `~/catkin_ws`,
-
-## Build
+And build the package,
 
 ```
+cd ..
+source /opt/ros/noetic/setup.bash
 catkin_make
 ```
 
-## In one terminal, run `roscore`
+## Installing Python3 Dependencies
+
+First install `pip3`,
+
+```
+sudo apt install python3-pip
+```
+
+Then install python3 packages,
+
+```
+pip install gym
+pip install stable_baselines3
+pip install rdp
+pip install bresenham
+pip install tqdm
+pip install tensorflow
+pip install -e turtlebot3_env 
+```
+
+## Download the Model
+
+Download the `model.zip` file that contains our model description to `catkin_ws/src` and unzip it by,
+
+```
+unzip model.zip
+```
+
+## Build the Package Again
+
+```
+cd ..
+catkin_make
+cd src
+```
+
+## Run `roscore`
+
+In another terminal, run
 
 ```
 roscore
 ```
 
-## In another terminal, run `launch_env.py`
+## Speed Up Gazbo Simulation (Recommended)
+
+We recommend to speed up the simulation time in Gazebo for faster run of our model.
+
+In `turtlebot3_simulation/turtlebot3_gazebo/worlds/empty.world`,
+
+Change the `max_step_size` from `0.001` to `0.005`. (It accelerates the simulation times by 5 times the real time.)
 
 ```
-python3 launch_env.py
+<max_step_size>0.005</max_step_size>
 ```
 
-## To turn off the gazebo gui,
+## Finally, Run Benchmark
 
-In `turtlebot3_empty_world.launch`, change
+### Running `run_benchmark.py`
 
-```
-<arg name="gui" value="true"/> to, <arg name="gui" value="false"/> 
-```
+Run the benchmark tests for our model with, (you should be at `~/catkin_ws/src`)
 
 ```
-export TURTLEBOT3_MODEL=burger
-roslaunch turtlebot3_example turtlebot3_pointop_key.launch
+python3 run_benchmark.py
 ```
+
+### Possible Error and Fix
+
+Executing the above command will likely produce an error which should look like,
+
+```
+OSError: /home/{USERNAME}/.local/lib/python3.8/site-packages/torch/lib/../../torch.libs/libgomp-d22c30c5.so.1.0.0: cannot allocate memory in static TLS block
+```
+
+It is likely to be solvable by entering the following command. Given the [Issue](https://github.com/opencv/opencv/issues/14884).
+
+Export a variable `LD_PRELOAD` with the path emitted in the error message.
+
+```
+export LD_PRELOAD=/home/{USERNAME}/.local/lib/python3.8/site-packages/torch/lib/../../torch.libs/libgomp-d22c30c5.so.1.0.0
+```
+
+Then, a re-run of the `run_benchmark.py` should work properly.
+
+### What the Output Should Look Like
+
+It runs our `Commander` and `Stroker` given the input images in the `benchmark` folder.
+
+After the run, each folders in `benchmark` should contain,
+
+1. `raw.png` : the original input image
+2. `commander.png` : the image that the `Commander` has planned, in its imaginary canvas
+3. `stroker.png` : the image that the `Stroker` has produced on the Gazebo world, given the ground-truth strokes
+4. `commander-and-stroker.png` : the output of our integrated model, where the `Commander` plans the strokes and the `Stroker` actuates the strokes
+
+# Contact Information
+
+If there is any difficulty reproducing our work, please contact via email 99jaehyunlee@kaist.ac.kr
