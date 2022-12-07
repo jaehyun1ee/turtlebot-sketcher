@@ -67,9 +67,9 @@ pip install tensorflow
 pip install -e turtlebot3_env 
 ```
 
-## Download the Model
+## Unzip the Model
 
-Download the `model.zip` file that contains our model description to `catkin_ws/src` and unzip it by,
+Unzip the `model.zip` file that contains our model description,
 
 ```
 unzip model.zip
