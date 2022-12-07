@@ -63,5 +63,4 @@ stroker/train/logs/
 __MACOSX/
 output/
 *.ndjson
-*.zip
 *.png
