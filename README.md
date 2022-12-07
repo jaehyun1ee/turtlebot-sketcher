@@ -23,7 +23,7 @@ Ubuntu 20.04 LTS (ARM64), ROS Noetic running on MAC M1 Parallels VM
 
 ## Installing ROS
 
-Please follow the quickstart guide in [ROBOTIS EMANUAL](https://emanual.robotis.com/docs/en/platform/turtlebot3/quick-start/) for Noetic version.
+Please follow the quickstart guide in [ROBOTIS EMANUAL](https://emanual.robotis.com/docs/en/platform/turtlebot3/quick-start/) for **Noetic** version, from 3.1.1 to 3.1.4.
 
 ## Cloning this Repository
 
