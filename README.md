@@ -31,7 +31,7 @@ Please follow the quickstart guide in [ROBOTIS EMANUAL](https://emanual.robotis.
 
 Please initialize your workspace in `~/catkin_ws/src` as follows.
 
-```console
+```bash
 $ source /opt/ros/noetic/setup.sh
 $ mkdir -p ~/catkin_ws/src
 $ cd ~/catkin_ws/src/
@@ -43,7 +43,7 @@ $ git submodule update --init
 
 And build the package,
 
-```console
+```bash
 # in ~/catkin_ws/src,
 $ cd ..
 $ source /opt/ros/noetic/setup.bash
@@ -54,13 +54,13 @@ $ catkin_make
 
 First install `pip3`,
 
-```console
+```bash
 $ sudo apt install python3-pip
 ```
 
 Then install python3 packages,
 
-```console
+```bash
 $ pip install gym
 $ pip install stable_baselines3
 $ pip install rdp
@@ -74,14 +74,14 @@ $ pip install -e turtlebot3_env
 
 Unzip the `model.zip` file that contains our model description,
 
-```console
+```bash
 # in ~/catkin_ws/src,
 $ unzip model.zip
 ```
 
 ## Build the Package Again
 
-```console
+```bash
 # in ~/catkin_ws/src,
 $ cd ..
 $ catkin_make
@@ -92,7 +92,7 @@ $ cd src
 
 In another terminal, run
 
-```console
+```bash
 # another terminal,
 $ roscore
 ```
@@ -124,7 +124,7 @@ $ python3 run_benchmark.py
 
 Executing the above command will likely produce an error (in ARM64 architecture) which should look like,
 
-```console
+```bash
 OSError: /home/{USERNAME}/.local/lib/python3.8/site-packages/torch/lib/../../torch.libs/libgomp-d22c30c5.so.1.0.0: cannot allocate memory in static TLS block
 ```
 
@@ -132,7 +132,7 @@ It is likely to be solvable by entering the following command. Related to the [I
 
 Export a variable `LD_PRELOAD` with the path emitted in the error message.
 
-```console
+```bash
 $ export LD_PRELOAD=/home/{USERNAME}/.local/lib/python3.8/site-packages/torch/lib/../../torch.libs/libgomp-d22c30c5.so.1.0.0
 ```
 
