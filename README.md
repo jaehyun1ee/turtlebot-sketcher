@@ -5,6 +5,8 @@
 
 We have implemented a Turtlebot3 Sketcher, that reproduces a given line drawing (or doodle) with the robot's trajectory as follows.
 
+Here is the [poster](poster.pdf) that explains our work in detail.
+
 # Demo Video of Our Model
 
 [![Demo of our Sketcher](http://img.youtube.com/vi/1Hjz8KOL0RE/0.jpg)](https://youtu.be/1Hjz8KOL0RE)
@@ -115,13 +117,13 @@ python3 run_benchmark.py
 
 ### Possible Error and Fix
 
-Executing the above command will likely produce an error which should look like,
+Executing the above command will likely produce an error (in ARM64 architecture) which should look like,
 
 ```
 OSError: /home/{USERNAME}/.local/lib/python3.8/site-packages/torch/lib/../../torch.libs/libgomp-d22c30c5.so.1.0.0: cannot allocate memory in static TLS block
 ```
 
-It is likely to be solvable by entering the following command. Given the [Issue](https://github.com/opencv/opencv/issues/14884).
+It is likely to be solvable by entering the following command. Related to the [Issue](https://github.com/opencv/opencv/issues/14884).
 
 Export a variable `LD_PRELOAD` with the path emitted in the error message.
 
