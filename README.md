@@ -31,66 +31,70 @@ Please follow the quickstart guide in [ROBOTIS EMANUAL](https://emanual.robotis.
 
 Please initialize your workspace in `~/catkin_ws/src` as follows.
 
-```
-source /opt/ros/noetic/setup.sh
-mkdir -p ~/catkin_ws/src
-cd ~/catkin_ws/src/
-catkin_init_workspace
-rm -rf CMakeLists.txt
-git clone https://github.com/wenko99/cs470-stroker.git .
-git submodule update --init
+```console
+$ source /opt/ros/noetic/setup.sh
+$ mkdir -p ~/catkin_ws/src
+$ cd ~/catkin_ws/src/
+$ catkin_init_workspace
+$ rm -rf CMakeLists.txt
+$ git clone https://github.com/wenko99/cs470-stroker.git .
+$ git submodule update --init
 ```
 
 And build the package,
 
-```
-cd ..
-source /opt/ros/noetic/setup.bash
-catkin_make
+```console
+# in ~/catkin_ws/src,
+$ cd ..
+$ source /opt/ros/noetic/setup.bash
+$ catkin_make
 ```
 
 ## Installing Python3 Dependencies
 
 First install `pip3`,
 
-```
-sudo apt install python3-pip
+```console
+$ sudo apt install python3-pip
 ```
 
 Then install python3 packages,
 
-```
-pip install gym
-pip install stable_baselines3
-pip install rdp
-pip install bresenham
-pip install tqdm
-pip install tensorflow
-pip install -e turtlebot3_env 
+```console
+$ pip install gym
+$ pip install stable_baselines3
+$ pip install rdp
+$ pip install bresenham
+$ pip install tqdm
+$ pip install tensorflow
+$ pip install -e turtlebot3_env 
 ```
 
 ## Unzip the Model
 
 Unzip the `model.zip` file that contains our model description,
 
-```
-unzip model.zip
+```console
+# in ~/catkin_ws/src,
+$ unzip model.zip
 ```
 
 ## Build the Package Again
 
-```
-cd ..
-catkin_make
-cd src
+```console
+# in ~/catkin_ws/src,
+$ cd ..
+$ catkin_make
+$ cd src
 ```
 
 ## Run `roscore`
 
 In another terminal, run
 
-```
-roscore
+```console
+# another terminal,
+$ roscore
 ```
 
 ## Speed Up Gazbo Simulation (Recommended)
@@ -101,7 +105,7 @@ In `turtlebot3_simulation/turtlebot3_gazebo/worlds/empty.world`,
 
 Change the `max_step_size` from `0.001` to `0.005`. (It accelerates the simulation times by 5 times the real time.)
 
-```
+```xml
 <max_step_size>0.005</max_step_size>
 ```
 
@@ -109,17 +113,18 @@ Change the `max_step_size` from `0.001` to `0.005`. (It accelerates the simulati
 
 ### Running `run_benchmark.py`
 
-Run the benchmark tests for our model with, (you should be at `~/catkin_ws/src`)
+Run the benchmark tests for our model with,
 
-```
-python3 run_benchmark.py
+```console
+# in ~/catkin_ws/src,
+$ python3 run_benchmark.py
 ```
 
 ### Possible Error and Fix
 
 Executing the above command will likely produce an error (in ARM64 architecture) which should look like,
 
-```
+```console
 OSError: /home/{USERNAME}/.local/lib/python3.8/site-packages/torch/lib/../../torch.libs/libgomp-d22c30c5.so.1.0.0: cannot allocate memory in static TLS block
 ```
 
@@ -127,8 +132,8 @@ It is likely to be solvable by entering the following command. Related to the [I
 
 Export a variable `LD_PRELOAD` with the path emitted in the error message.
 
-```
-export LD_PRELOAD=/home/{USERNAME}/.local/lib/python3.8/site-packages/torch/lib/../../torch.libs/libgomp-d22c30c5.so.1.0.0
+```console
+$ export LD_PRELOAD=/home/{USERNAME}/.local/lib/python3.8/site-packages/torch/lib/../../torch.libs/libgomp-d22c30c5.so.1.0.0
 ```
 
 Then, a re-run of the `run_benchmark.py` should work properly.
