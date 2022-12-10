@@ -30,7 +30,7 @@ Ubuntu 20.04 LTS (ARM64), ROS Noetic running on MAC M1 Parallels VM
 You may use the following docker image which has all the dependencies installed.
 
 ```
-docker pull wenko99/cs470
+docker pull wenko99/cs470:sketcher
 ```
 
 **However it is also based on ARM64, so it will likely not work in other architectures.**
