@@ -19,9 +19,23 @@ The following steps will lead to a run of, `run_benchmark.py`, which will run th
 
 ## Environment
 
+### Our Environment
+
 Ubuntu 20.04 LTS (ARM64), ROS Noetic running on MAC M1 Parallels VM
 
 **This work has heavy dependencies, so we recommend following the requirements with a vanilla Ubuntu.**
+
+### Docker Image
+
+You may use the following docker image which has all the dependencies installed.
+
+```
+docker pull wenko99/cs470
+```
+
+**However it is also based on ARM64, so it will likely not work in other architectures.**
+
+**So again, we recommend following the requirements written below on a vanilla Ubuntu.**
 
 ## Installing ROS
 
